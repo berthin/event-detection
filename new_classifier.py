@@ -3,6 +3,7 @@ from sklearn.neighbors import DistanceMetric
 from sklearn.externals.joblib import delayed, Parallel
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import chi2_kernel
+import sys
 
 class unname_classifier:
   """
@@ -88,15 +89,29 @@ class unname_classifier:
   data_class    : n_clusters_per_class x n_features
   data_query    : n_queries x n_single_query_points x n_features
   """
-  def find_cost (self, data_class, data_query, C=1.0):
-
+  def find_cost (self, data_class, data_query, C=1.0, n_processors = -1):
+    def calculate_cost_intern (clusters, points, C=1.0, type_distance = 'euclidean'):
+      distance_function = None
+      if distance in ['euclidean', 'manhattan', 'hamming', 'canberra', 'braycurtis']:
+        distance_function = DistanceMetric.get_metric (distance)
+      elif distance in ['chebyshev', 'minkowski', 'wminkowski']:
+        distance_function = DistanceMetric.get_metric (distance, params_distance)
+      cost = 0.0
+      for point_features in points:
+        cost += np.min ([distance_function.pairwise((cluster_features, point_features))[0, 1] for cluster_features in clusters])
+      return cost
     #total_cost = np.array ([self.calculate_cost (data_class, query_point) for query_point in data_query])
     #return total_cost
+    #
+    try_parallel = False
+    if try_parallel:
+      total_cost = Parallel(n_jobs=n_processors) (delayed(calculate_cost_intern)(data_class, data_point_query, C, 'euclidean') for data_point_query in data_query)
+      return np.array(tota_cost)
     total_cost = np.empty ([len (data_query)])
     for ith_query in xrange (len (data_query)):
       total_cost[ith_query] = self.calculate_cost (data_class, data_query[ith_query], C)
       #print 'query', ith_query, ':', total_cost
-    return total_cost
+    return np.array(total_cost)
 
     #total_cost = np.empty ([len (data_query)], np.float)
     #ith_centroid = 0
@@ -114,7 +129,11 @@ class unname_classifier:
     #all_costs = np.array (Parallel (n_jobs = n_processors) (delayed (find_cost) (self.data_clusters[class_i], data_test, C) for class_i in range (len (self.data_clusters))))
 
     all_costs = []
+    upd_value = 100. / len(self.data_clusters)
     for class_i in xrange (len (self.data_clusters)):
+      sys.stdout.write('\r')
+      sys.stdout.write("[%-100s] %d%%" % ('='*class_i, upd_value * class_i))
+      sys.stdout.flush()
       #print 'assigning to class ', class_i
       all_costs.append (self.find_cost (self.data_clusters[class_i], data_test, C))
     all_costs = np.array (all_costs)

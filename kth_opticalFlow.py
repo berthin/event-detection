@@ -10,7 +10,7 @@ from subprocess import call, PIPE
 PATH_KTH = '/home/berthin/Documents/kth/'
 PATH_KTH_OUT = '/home/berthin/Documents/kth-transformed/'
 PATH_KTH_VR = '/home/berthin/Documents/kth-transformed-visual_rhythm/'
-KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'jogging', 'running' , 'walking']
+KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'walking']
 KTH_CLASSES_INV = {KTH_CLASSES[idx]:idx for idx in xrange(len(KTH_CLASSES))}
 
 ith_class = 0
@@ -155,6 +155,45 @@ def read_boundingBox(file_name):
     inFile.close()
 
 
+def read_boundingBox_minmax(file_name, frame_size, padding = 10):
+    global PATH_KTH
+    global KTH_CLASSES
+    #person number (1-25) + scenario number (1-4) + action number (1-6) (1-boxing, 2-hand clapping, 3-hand waving, 4-jogging, 5-running, 6-walking)+ sequence number (1-4) + start frame + end frame +             bounding box information (ymin xmin ymax xmax) for each frame
+    inFile = open(file_name, 'r')
+    inFile.readline()
+    inFile.readline()
+    while True:
+        seq1 = inFile.readline()
+        seq2 = inFile.readline()
+        seq3 = inFile.readline()
+        seq4 = inFile.readline()
+        arr = np.array([int(x) for x in seq1.split(' ') if x.isdigit()])
+        video_name = 'person%02d_%s_d%d_uncomp.avi' % (arr[0], KTH_CLASSES[arr[2] - 1], arr[1])
+        cap = cv2.VideoCapture(PATH_KTH + KTH_CLASSES[arr[2] - 1] + '/' + video_name)
+        print cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        for seq in [seq1, seq2, seq3, seq4]:
+            print 'new seq'
+            arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
+            start_frame, end_frame = arr[4:6]
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+            bounds = arr[6:].reshape(end_frame - start_frame + 1, 4)
+            ymin, xmin, ymax, xmax = [np.min(bounds[:, i]) for i in xrange(4)]
+
+            ymin = max(ymin - padding, 0)
+            xmin = max(xmin - padding, 0)
+            ymax = min(ymax + padding, frame_size[0] - 1)
+            xmax = max(xmax + padding, frame_size[1] - 1)
+
+            for ith_frame in xrange(end_frame-start_frame+1):
+                ret, frame = cap.read()
+                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+                cv2.imshow(video_name, frame)
+                k = cv2.waitKey(30) & 0xff
+                if k == 27:
+                    break
+        break
+    inFile.close()
+
 def get_boundingBoxes(file_name, size, show=False):
     global KTH_CLASSES_INV
     global PATH_KTH
@@ -212,12 +251,374 @@ def get_boundingBoxes(file_name, size, show=False):
 sys.path.append(os.environ['GIT_REPO'] + '/source-code/visual-rhythm')
 import visual_rhythm
 
-def get_visualrhythm(file_name, size, type_visualrhythm = 'horizontal', params = None, show = False):
-    def extract_horizontal(img, (W, H), gap):
-        return np.array([img[row][:] for row in xrange(0, H, gap)], np.uint8).flatten()
-    def extract_vertical(img, (W, H), gap):
-        return np.array([img[:][col] for col in xrange(0, W, gap)], np.uint8).flatten()
-    def extract_zigzag(img, (W, H), row_gap, col_gap):
+#read_kth_info(PATH_KTH + 'info-kth.in')
+def read_kth_info (path_to_file, list_actions = 'all'):
+    if list_actions == 'all':
+        list_actions = ['boxing', 'handclapping', 'handwaving', 'walking']
+    start_line = 21
+    inFile = open(path_to_file)
+    for i in xrange(start_line): inFile.readline()
+    m_kth_info = {}
+    while True:
+        line = inFile.readline()
+        if len(line) < 5 and ith_person == 25: break
+        if len(line) < 5: continue
+        action = re.findall('_[a-z]+_', line)[0][1:-1]
+        if not action in list_actions: continue
+        matches = np.array(map(int, re.findall('[0-9]+', line)))
+        ith_person, ith_d = matches[:2]
+        frame_intervals = matches[2:].reshape(len(matches)/2-1, 2)
+        m_kth_info[(ith_person, action, ith_d)] = frame_intervals
+    return m_kth_info
+
+#search_in_kth_info(kth_info, (1, 'boxing', None))
+
+def search_in_kth_info (m_kth_info, (ith_person, action, ith_d)):
+    import re
+    param_ith_person = '[0-9]+' if not ith_person else str(ith_person)
+    param_action = '[a-z]+' if not action else action
+    param_ith_d = '[0-9]+' if not ith_d else str(ith_d)
+    return [(key, value) for key, value in m_kth_info.items() if re.search('_%s_%s_%s_' % (param_ith_person, param_action, param_ith_d), '_%s_' %'_'.join(map(str, key)))]
+
+#according to an analysis, the min-max frame-interval is 68 among all the considered actions
+def get_visualrhythm_improved_short_sequences(m_kth_info, n_frames=68, fraction = 1/4, type_visualrhythm = 'horizontal', params = None, frame_size = (120, 160), sigma_canny = 2.5):
+    from skimage import feature
+    global PATH_KTH
+    global PATH_KTH_VR
+    for key, value in m_kth_info.items():
+        ith_person, action, ith_d = key
+        if len(value) == 0: continue
+        cap = cv2.VideoCapture('%s%s/person%02d_%s_d%d_uncomp.avi' % (PATH_KTH, action, ith_person, action, ith_d))
+        for start_frame, end_frame in value:
+            diff = end_frame - start_frame + 1
+            if diff < n_frames: continue
+            img_vr = []
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame + diff * fraction)
+            for ith_frame in xrange(start_frame + diff * fraction, (end_frame - diff * fraction) + 1):
+                _, frame = cap.read()
+                img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params))
+            img_vr = np.array(img_vr)
+            img_vr = feature.canny(img_vr, sigma_canny) * 255
+            cv2.imwrite('%s%s/person%02d_%s_d%d.png' % (PATH_KTH_VR, action, ith_person, action, ith_d), img_vr)
+            break
+        cap.release()
+
+
+def extract_patterns_smart(action = 'boxing', nFrames = 50, frame_size = None, patt_size = (30, 50), n_patterns = 3, show = False, save_patterns = False, thr_std = 15):
+    global PATH_KTH_VR
+    global PATH_KTH_PATTERNS
+    #
+    init_time = time.time()
+    #
+    files = os.listdir(PATH_KTH_VR + action)
+    thr_std, thr_cvr = 15, 0.4
+    thr_shape, thr_col = 10, 3
+    #
+    get_sum = lambda x: x.flatten().sum()
+
+    for im_name in files:
+        im_0 = io.imread(PATH_KTH_VR + action + '/' + im_name, as_grey = True)
+        #im_0 = im_0[:nFrames, :]
+        patt_idx = 0
+        bag_patterns = []
+        for im_1 in np.hsplit(im_0, im_0.shape[1] // frame_size[1]):
+            last_col = -1
+            pattern = np.empty([im_1.shape[0], 0], np.uint8)
+            for col in xrange(im_1.shape[1]):
+                if np.std (im_1[:, col]) < thr_std:
+                    if (last_col != -1) and (col - last_col > thr_col):
+                        pattern = np.hstack ((pattern, im_1[:, last_col:col]))
+                    last_col = -1
+                else:
+                    last_col = col if last_col == -1 else last_col
+            if last_col != -1 and col - last_col > thr_col:
+                pattern = np.hstack ((pattern, im_1[:, last_col:col]))
+            if pattern.shape[1] > thr_shape:
+                if save_patterns:
+                    bag_patterns.append(cv2.resize(pattern, patt_size, cv2.INTER_NEAREST))
+                    #bag_patterns.append(pattern)
+                patt_idx += 1
+        bag_patterns.sort(key = get_sum, reverse = True)
+        ith_pattern = 0
+        for pattern in bag_patterns[:n_patterns]:
+            ith_pattern += 1
+            io.imsave('%s%s/%s_p%d.bmp' % (PATH_KTH_PATTERNS, action, im_name[:-4], ith_pattern), pattern)
+    #
+    finish_time = time.time ()
+    print (finish_time - init_time)
+
+
+def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = None, patt_size = (30, 50), param_VR = 5, n_patterns = 3, thr_min_pixels = 5, thr_min_gap = 10, show = False, save_patterns = False):
+    global PATH_KTH_VR
+    global PATH_KTH_PATTERNS
+    #
+    init_time = time.time()
+    #
+    files = os.listdir(PATH_KTH_VR + action)
+    #
+    get_sum = lambda x: x.flatten().sum()
+
+    for im_name in files:
+        im_0 = io.imread(PATH_KTH_VR + action + '/' + im_name, as_grey = True)
+        #im_0 = im_0[:nFrames, :]
+        bag_patterns = []
+        for im_1 in np.hsplit(im_0, (frame_size[0] / param_VR)):
+            for col_1 in xrange(5, im_1.shape[1]):
+                if im_1[:, col_1].sum() >= thr_min_pixels: break
+            if col_1 + 1 >= im_1.shape[1]-5: continue
+            for col_2 in xrange(im_1.shape[1]-5, col_1, -1):
+                if im_1[:, col_2].sum() >= thr_min_pixels: break
+            if col_2 == 0: continue
+            if col_2 - col_1 + 1 < thr_min_gap: continue
+
+            pattern = im_1[:, col_1:col_2+1]
+            if save_patterns:
+                bag_patterns.append(cv2.resize(pattern, patt_size, cv2.INTER_CUBIC))
+                #bag_patterns.append(pattern)
+        bag_patterns.sort(key = get_sum, reverse = True)
+        ith_pattern = 0
+        for pattern in bag_patterns[:n_patterns]:
+            ith_pattern += 1
+            io.imsave('%s%s/%s_p%d.bmp' % (PATH_KTH_PATTERNS, action, im_name[:-4], ith_pattern), pattern)
+    #
+    finish_time = time.time ()
+    print (finish_time - init_time)
+
+def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n_patterns_per_video = 0):
+    global PATH_KTH_PATTERNS
+    data = []
+    for ith_actor in actors_training:
+        for ith_d in xrange(4):
+            for ith_p in xrange(n_patterns_per_video):
+                pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
+                data.append(hog(pattern, **params_hog))
+    return np.array(data)
+
+#classify_visualrhythm_canny_patterns({'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}, 5)
+
+def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
+    from skimage.feature import hog
+    from sklearn.externals.joblib import Parallel, delayed
+
+    global KTH_CLASSES
+
+    #params_hog = {'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}
+    #n_patterns_per_video = 5
+
+    actors_training = [11, 12, 13, 14, 15, 16, 17, 18]
+    actors_validation = [19, 20, 21, 23, 24, 25, 1, 4]
+    actors_testing = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+
+    data_training_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_training, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_training = np.empty([0, data_training_list[0].shape[1]])
+    label_training = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_training_list):
+        data_training = np.vstack((data_training, datum))
+        label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
+
+    data_validation_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_validation, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_validation = np.empty([0, data_validation_list[0].shape[1]])
+    label_validation = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_validation_list):
+        data_validation = np.vstack((data_validation, datum))
+        label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
+
+    data_testing_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_testing, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_testing = np.empty([0, data_testing_list[0].shape[1]])
+    label_testing = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_testing_list):
+        data_testing = np.vstack((data_testing, datum))
+        label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
+
+def run_svm_canny_patterns (data_training, data_validation, data_testing,
+        label_training, label_validation, label_testing, type_svm = 'svm'):
+    from sklearn import svm, grid_search
+    from sklearn import neighbors
+    from sklearn import metrics
+
+    _none = -1
+    _svm = 0
+    _nu_svm = 1
+    _kernel_chi_square = 2
+    _kernel_hik = 3
+    _knn = 4
+    _type_svm = _svm if type_svm == 'svm' else _nu_svm if type_svm == 'nu_svm' else _kernel_chi_square if type_svm == 'kernel_chi_square' else _kernel_hik if type_svm == 'kernel_hik' else _knn if type_svm == 'knn' else _none;
+
+    ## Grid-search parameters setting
+
+    gamma_range = np.power (10., np.arange (-5, 5, 0.5));
+    C_range = np.power (10., np.arange (-5, 5));
+    nu_range = np.arange (0.1, 0.6, 0.1);
+    grid_search_params_SVC = \
+      [{'kernel' : ['rbf'], 'C' : C_range, 'gamma' : gamma_range},\
+       {'kernel' : ['linear'], 'C' : C_range}];
+    grid_search_params_nuSVC = \
+      [{'kernel' : ['rbf'], 'nu' : nu_range, 'gamma' : gamma_range},\
+       {'kernel' : ['linear'], 'nu' : nu_range}];
+    grid_search_params_kernel = \
+      [{'kernel' : ['precomputed'], 'C' : C_range}];
+    grid_search_params_knn = \
+      [{'n_neighbors' : [1, 3, 5, 7, 9, 11]}]
+
+    ## BAG OF WORDS
+    #pre_data_train, _ = parse_data3 (data, n_features, train, n_samples_per_class)
+
+    #_, codebook_predictor = bag_of_words.build_codebook (pre_data_train, number_of_words = n_words, clustering_method = 'kmeans')
+
+    #data_train, label_train = Parallel (n_jobs = n_processors) (delayed (parse_data2) (data, n_orientations, idx_train, codebook_predictor, n_words, type_coding, type_pooling) for idx_train in train)
+
+    ## Temporaly we are gonna test only one-vs-one SVM linear-rbf kernels
+    #elif _type_svm == _kernel_chi_square or _type_svm == _kernel_hik:
+    #  grid_search = GridSearchCV (svm.SVC (), grid_search_params_kernel, cv=5, n_jobs=n_processors);
+
+    if _type_svm == _svm:
+        classifier = svm.SVC
+        grid_search_params = grid_search_params_SVC
+    elif _type_svm == _nu_svm:
+        classifier = svm.NuSVC
+        grid_search_params = grid_search_params_nuSVC
+    elif _type_svm == _knn:
+        classifier = neighbors.KNeighborsClassifier
+        grid_search_params = grid_search_params_knn
+
+    def run_gridSearch(classifier, args, data_training, label_training, data_validation, label_validation):
+        return metrics.accuracy_score(classifier(**args).fit(data_training, label_training).predict(data_validation), label_validation)
+
+    grid_search_ans = Parallel(n_jobs = -1)(delayed(run_gridSearch)(classifier, args, data_training, label_training, data_validation, label_validation) for args in list(grid_search.ParameterGrid(grid_search_params)))
+
+#grid_search_ans = Parallel(n_jobs=-1)(delayed(metrics.accuracy_score)(label_validation, classifier(**args).fit(data_training, label_training).predict(data_validation) for args in list(grid_search.ParameterGrid(grid_search_params))))
+
+
+    best_params = list(grid_search.ParameterGrid(grid_search_params))[grid_search_ans.index(max(grid_search_ans))]
+
+    clf = classifier(**best_params).fit(np.vstack((data_training, data_validation)), np.hstack((label_training, label_validation)))
+
+    pred = clf.predict(data_testing)
+
+    print classification_report (pred, label_testing)
+
+    print 'accuracy: ', metrics.accuracy_score(pred, label_testing)
+
+
+
+n_classes = 5, n_samples_per_class = 10, n_features=-1, n_orientations = 9, n_words=300, type_coding = 'hard', type_pooling = 'max', type_svm = 'svm', n_processors=1):
+  debug = True
+  global training_time
+  #for debugging
+  n_classes, n_scenarios, n_words = 4, 4, 300
+  type_coding, type_pooling = 'hard', 'mean'
+
+  pred_total = np.empty (0, np.uint8);
+  label_total = np.empty (0, np.uint8);
+
+  actors_training = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 1, 4]
+  actors_testing = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+  train = np.array(actors_training, np.uint8) - 1
+  test = np.array(actors_testing, np.uint8) - 1
+  if True:
+    ## BAG OF WORDS
+    pre_data_train, _ = parse_data1 (data, n_orientations, train, n_classes, n_scenarios)
+
+    #pca = PCA (n_components = 3).fit_transform (pre_data_train)
+    #plt.scatter (pca[:, 0], pca[:, 1])
+    #fig = plt.figure()
+    #ax = fig.add_subplot (111, projection = '3d')
+    #ax.scatter (xs=pca[:, 0], ys=pca[:, 1], zs=pca[:, 2])
+    #plt.show ()
+
+    time_a = time.time ()
+    cw, codebook_predictor = bag_of_words.build_codebook (pre_data_train, number_of_words = n_words, clustering_method = 'kmeans')
+
+    #data_train, label_train = Parallel (n_jobs = n_processors) (delayed (parse_data6) (data, n_orientations, idx_train, codebook_predictor, n_words, type_coding, type_pooling, n_samples_per_class) for idx_train in train)
+    #data_test, label_test = Parallel (n_jobs = n_processors) (delayed (parse_data6) (data, n_orientations, idx_test, codebook_predictor, n_words, type_coding, type_pooling, n_samples_per_class) for idx_test in test)
+    data_train, label_train = parse_data6 (data, n_orientations, train, n_classes, n_scenarios, codebook_predictor, n_words, type_coding, type_pooling)
+
+    data_test, label_test = parse_data6 (data, n_orientations, test, n_classes, n_scenarios, codebook_predictor, n_words, type_coding, type_pooling)
+    time_b = time.time ()
+    training_time += (time_b - time_a)
+    print 'data codes obtained'
+
+
+
+def get_visualrhythm_bounding_box_minmax(file_name, size, type_visualrhythm = 'horizontal', params = None, show = False, padding = 10, frame_size = (120, 160)):
+    def extract_horizontal(img, (H, W), gap):
+        return np.array([img[row, :] for row in xrange(0, H, gap)], np.uint8).flatten()
+    def extract_vertical(img, (H, W), gap):
+        return np.array([img[:, col] for col in xrange(0, W, gap)], np.uint8).flatten()
+    def extract_zigzag(img, (H, W), row_gap, col_gap):
+        return np.array(visual_rhythm.get_zigzag(frame, False, row_gap, col_gap, W, H)).flatten()
+
+    global KTH_CLASSES_INV
+    global PATH_KTH
+    global PATH_KTH_OUT
+    global PATH_KTH_VR
+    #person number (1-25) + scenario number (1-4) + action number (1-6) (1-boxing, 2-hand clapping, 3-hand waving, 4-jogging, 5-running, 6-walking)+ sequence number (1-4) + start frame + end frame +             bounding box information (ymin xmin ymax xmax) for each frame
+    inFile = open(file_name, 'r')
+    inFile.readline()
+    inFile.readline()
+    counter = 0
+    for i in xrange(0):
+        inFile.readline()
+        counter += 1
+    seq = inFile.readline()
+    while len(seq) > 0:
+        arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
+        video_name = 'person%02d_%s_d%d_uncomp.avi' % (arr[0], KTH_CLASSES[arr[2] - 1], arr[1])
+        cap_in = cv2.VideoCapture(PATH_KTH + KTH_CLASSES[arr[2] - 1] + '/' + video_name)
+
+        img_vr = []
+        while True:
+            print video_name
+            idx_frame = 0
+            counter += 1
+            print counter
+            arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
+            start_frame, end_frame = arr[4:6]
+            start_frame, end_frame = start_frame - 1, end_frame - 1
+            cap_in.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+            bounds = arr[6:].reshape(end_frame - start_frame + 1, 4)
+            ymin, xmin, ymax, xmax = [np.min(bounds[:, i]) for i in xrange(4)]
+
+            ymin = max(ymin - padding, 0)
+            xmin = max(xmin - padding, 0)
+            ymax = min(ymax + padding, frame_size[0] - 1)
+            xmax = max(xmax + padding, frame_size[1] - 1)
+
+            for ith_frame in xrange(end_frame-start_frame+1):
+                ret, frame = cap_in.read()
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                frame = cv2.resize(frame[ymin:ymax, xmin:xmax], size, cv2.INTER_CUBIC)
+                if type_visualrhythm[0] == 'h': #horizontal
+                    img_vr.append(extract_horizontal(frame, size, params[0]))
+                elif type_visualrhythm[0] == 'v': #vertical
+                    img_vr.append(extract_vertical(frame, size, params[0]))
+                elif type_visualrhythm[0] == 'z': #zigzag
+                    img_vr.append(extract_zigzag(frame, size, params[0], params[1]))
+            seq = inFile.readline()
+            prefix = ' '.join(map(str, arr[:3]))
+            if not seq.startswith(prefix):
+                break
+        img_vr = np.array(img_vr)
+        if show:
+            plt.imshow(img_vr, cmap='gray')
+            plt.show()
+
+        cap_in.release()
+        cv2.imwrite('%s%s/%s.png' % (PATH_KTH_VR, KTH_CLASSES[arr[2] - 1], video_name[:-4]), img_vr)
+
+        break
+    inFile.close()
+
+
+
+#get_visualrhythm_bounding_box(PATH_KTH + 'bounding_box.in', (30, 50), 'horizontal', [10], False)
+def get_visualrhythm_bounding_box(file_name, size, type_visualrhythm = 'horizontal', params = None, show = False):
+    def extract_horizontal(img, (H, W), gap):
+        return np.array([img[row, :] for row in xrange(0, H, gap)], np.uint8).flatten()
+    def extract_vertical(img, (H, W), gap):
+        return np.array([img[:, col] for col in xrange(0, W, gap)], np.uint8).flatten()
+    def extract_zigzag(img, (H, W), row_gap, col_gap):
         return np.array(visual_rhythm.get_zigzag(frame, False, row_gap, col_gap, W, H)).flatten()
 
     global KTH_CLASSES_INV
@@ -243,7 +644,7 @@ def get_visualrhythm(file_name, size, type_visualrhythm = 'horizontal', params =
         img_vr = []
         while True:
             print video_name
-            call(['nohup', 'mkdir', '/tmp/' + video_name, '>', '/dev/null', '2>1'])
+            #call(['nohup', 'mkdir', '/tmp/' + video_name, '>', '/dev/null', '2>1'])
             idx_frame = 0
             counter += 1
             print counter
