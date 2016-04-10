@@ -19,9 +19,9 @@ list_files.sort()
 ext = '.avi'
 list_files = [file for file in list_files if file[0] is not '.' and ext in file]
 
-Parallel (n_jobs = 8) (delayed (run_denseOpticalFlowParallel) ((PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), [0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7], video_name]) for video_name in list_files)
+#Parallel (n_jobs = 8) (delayed (run_denseOpticalFlowParallel) ((PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), [0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7], video_name]) for video_name in list_files)
 
-Parallel (n_jobs = 8) (delayed (show_denseOpticalFlow) (cv2.VideoCapture(PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), 0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7]) for video_name in list_files)
+#Parallel (n_jobs = 8) (delayed (show_denseOpticalFlow) (cv2.VideoCapture(PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), 0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7]) for video_name in list_files)
 
 def empty_function (obj, params):
     return obj
@@ -64,8 +64,8 @@ def show_denseOpticalFlow(cap, pyr_scale, levels, winsize, iterations, poly_n, p
 
 
 #show_detectPeople((PATH_KTH + KTH_CLASSES[ith_class] + '/' + list_files[-1]), hog, list_files[-1])
-hog = cv2.HOGDescriptor()
-hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+#hog = cv2.HOGDescriptor()
+#hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 def show_detectPeople(video_path, video_name, winStride, padding, scale):
     hog = cv2.HOGDescriptor()
     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
@@ -429,6 +429,9 @@ def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
     for ith_action, datum in zip(xrange(4), data_testing_list):
         data_testing = np.vstack((data_testing, datum))
         label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
+
+    return (data_training, data_validation, data_testing,
+            label_training, label_validation, label_testing)
 
 def run_svm_canny_patterns (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing, type_svm = 'svm'):
