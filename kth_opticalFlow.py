@@ -503,7 +503,7 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
     print 'accuracy: ', metrics.accuracy_score(pred, label_testing)
 
 
-
+"""
 n_classes = 5, n_samples_per_class = 10, n_features=-1, n_orientations = 9, n_words=300, type_coding = 'hard', type_pooling = 'max', type_svm = 'svm', n_processors=1):
   debug = True
   global training_time
@@ -540,7 +540,7 @@ n_classes = 5, n_samples_per_class = 10, n_features=-1, n_orientations = 9, n_wo
     time_b = time.time ()
     training_time += (time_b - time_a)
     print 'data codes obtained'
-
+"""
 
 
 def get_visualrhythm_bounding_box_minmax(file_name, size, type_visualrhythm = 'horizontal', params = None, show = False, padding = 10, frame_size = (120, 160)):
