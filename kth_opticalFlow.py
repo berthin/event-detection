@@ -10,14 +10,18 @@ from subprocess import call, PIPE
 PATH_KTH = '/home/berthin/Documents/kth/'
 PATH_KTH_OUT = '/home/berthin/Documents/kth-transformed/'
 PATH_KTH_VR = '/home/berthin/Documents/kth-transformed-visual_rhythm/'
+PATH_KTH_PATTERNS = \
+    '/home/berthin/Documents/kth-visual_rhythm-horizontal-improved-patterns/'
 KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'walking']
 KTH_CLASSES_INV = {KTH_CLASSES[idx]:idx for idx in xrange(len(KTH_CLASSES))}
 
+"""
 ith_class = 0
 list_files = os.listdir(PATH_KTH + KTH_CLASSES[ith_class])
 list_files.sort()
 ext = '.avi'
 list_files = [file for file in list_files if file[0] is not '.' and ext in file]
+"""
 
 #Parallel (n_jobs = 8) (delayed (run_denseOpticalFlowParallel) ((PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), [0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7], video_name]) for video_name in list_files)
 
@@ -117,7 +121,7 @@ def show_detectPeople2(video_path, video_name, winStride, padding, scale, meanSh
         if k == 27:
             break
 
-Parallel(n_jobs=6) (delayed(show_detectPeople)((PATH_KTH + KTH_CLASSES[ith_class] + '/' + file_name), hog, file_name) for file_name in list_files[:20])
+#Parallel(n_jobs=6) (delayed(show_detectPeople)((PATH_KTH + KTH_CLASSES[ith_class] + '/' + file_name), hog, file_name) for file_name in list_files[:20])
 
 #show_denseOpticalFlow(obj, 0.7, 3, 1, 5, 3, 1.2, 0, 10)
 #show_denseOpticalFlow(obj, 0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [5])
@@ -384,6 +388,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
     finish_time = time.time ()
     print (finish_time - init_time)
 
+from skimage.feature import hog
 def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n_patterns_per_video = 0):
     global PATH_KTH_PATTERNS
     data = []
@@ -391,6 +396,7 @@ def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n
         for ith_d in xrange(4):
             for ith_p in xrange(n_patterns_per_video):
                 pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
+                if pattern is None: continue
                 data.append(hog(pattern, **params_hog))
     return np.array(data)
 
@@ -432,6 +438,10 @@ def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
 
     return (data_training, data_validation, data_testing,
             label_training, label_validation, label_testing)
+
+def run_gridSearch(classifier, args, data_training, label_training, data_validation, label_validation):
+    from sklearn import metrics
+    return metrics.accuracy_score(classifier(**args).fit(data_training, label_training).predict(data_validation), label_validation)
 
 def run_svm_canny_patterns (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing, type_svm = 'svm'):
@@ -484,9 +494,6 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
         classifier = neighbors.KNeighborsClassifier
         grid_search_params = grid_search_params_knn
 
-    def run_gridSearch(classifier, args, data_training, label_training, data_validation, label_validation):
-        return metrics.accuracy_score(classifier(**args).fit(data_training, label_training).predict(data_validation), label_validation)
-
     grid_search_ans = Parallel(n_jobs = -1)(delayed(run_gridSearch)(classifier, args, data_training, label_training, data_validation, label_validation) for args in list(grid_search.ParameterGrid(grid_search_params)))
 
 #grid_search_ans = Parallel(n_jobs=-1)(delayed(metrics.accuracy_score)(label_validation, classifier(**args).fit(data_training, label_training).predict(data_validation) for args in list(grid_search.ParameterGrid(grid_search_params))))
@@ -498,7 +505,7 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
 
     pred = clf.predict(data_testing)
 
-    print classification_report (pred, label_testing)
+    print metrics.classification_report (pred, label_testing)
 
     print 'accuracy: ', metrics.accuracy_score(pred, label_testing)
 
