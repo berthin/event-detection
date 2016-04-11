@@ -397,6 +397,7 @@ def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n
             for ith_p in xrange(n_patterns_per_video):
                 pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
                 if pattern is None: continue
+                pattern = (pattern > 0) * 255
                 data.append(hog(pattern, **params_hog))
     return np.array(data)
 
