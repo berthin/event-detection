@@ -1,0 +1,151 @@
+berthin@voronoi:~/Documents/git-repo/source-code/eveberthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_clas
+sification_kth_canny.py < a1.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.71      0.76       125
+        1.0       0.73      0.60      0.66       132
+        2.0       0.61      0.99      0.75        67
+        3.0       0.94      0.94      0.94       108
+
+avg / total       0.79      0.78      0.78       432
+
+accuracy:  0.777777777778
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py  < a2.in 
+accuracy:  0.74537037037
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py  < a3.in 
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support                                                                            
+        0.0       0.84      0.71      0.77       128
+        1.0       0.73      0.62      0.67       127
+        2.0       0.64      0.99      0.78        70
+        3.0       0.94      0.94      0.94       107
+
+avg / total       0.80      0.79      0.78       432
+
+accuracy:  0.787037037037
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py  < a4.in 
+accuracy:  0.7638888889
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py  < a5.in 
+accuracy:  0.766203903704
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py  < a7.in 
+accuracy:  0.7708333333
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a6.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.87      0.75      0.80        63
+        1.0       0.74      0.51      0.61        78
+        2.0       0.39      0.91      0.55        23
+        3.0       0.94      0.98      0.96        52
+
+avg / total       0.79      0.74      0.74       216
+
+accuracy:  0.736111111111
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py  < a8.in 
+accuracy:  0.731481481481
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a9.in                     
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.81      0.73      0.77       119
+        1.0       0.73      0.55      0.63       143
+        2.0       0.56      0.92      0.69        65
+        3.0       0.96      0.99      0.98       105
+
+avg / total       0.78      0.76      0.76       432
+
+accuracy:  0.763888888889
+------------------------------------------------------------------------------------------------------
+berthin@bezier:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a10.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.81      0.77      0.79        57
+        1.0       0.74      0.53      0.62        75
+        2.0       0.50      0.87      0.64        31
+        3.0       0.96      0.98      0.97        53
+
+avg / total       0.78      0.75      0.75       216
+
+accuracy:  0.75462962963
+------------------------------------------------------------------------------------------------------
+berthin@bezier:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a11.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.83      0.74      0.79       121
+        1.0       0.74      0.56      0.64       143
+        2.0       0.50      0.92      0.65        59
+        3.0       0.95      0.94      0.95       109
+
+avg / total       0.79      0.76      0.76       432
+
+accuracy:  0.756944444444
+------------------------------------------------------------------------------------------------------
+berthin@bezier:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a12.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.78      0.76      0.77        55
+        1.0       0.74      0.54      0.62        74
+        2.0       0.52      0.90      0.66        31
+        3.0       0.98      0.95      0.96        56
+
+avg / total       0.78      0.75      0.75       216
+
+accuracy:  0.75462962963
+------------------------------------------------------------------------------------------------------
+berthin@bezier:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a13.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.78      0.74      0.76        57
+        1.0       0.69      0.51      0.59        72
+        2.0       0.50      0.84      0.63        32
+        3.0       0.96      0.95      0.95        55
+
+avg / total       0.75      0.73      0.73       216
+
+accuracy:  0.731481481481
+------------------------------------------------------------------------------------------------------
+berthin@bezier:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a14.in
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.72      0.76      0.74        51
+        1.0       0.69      0.54      0.60        69
+        2.0       0.61      0.77      0.68        43
+        3.0       0.98      1.00      0.99        53
+
+avg / total       0.75      0.75      0.75       216
+
+accuracy:  0.75
+------------------------------------------------------------------------------------------------------
+berthin@bezier:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a15.in 
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.72      0.67      0.70       116
+        1.0       0.60      0.52      0.56       125
+        2.0       0.59      0.78      0.67        82
+        3.0       0.95      0.94      0.95       109
+
+avg / total       0.72      0.72      0.72       432
+
+accuracy:  0.717592592593
+------------------------------------------------------------------------------------------------------
+berthin@voronoi:~/Documents/git-repo/source-code/event-detection$ python run_classification_kth_canny.py < a16.in 
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.74      0.78       121
+        1.0       0.71      0.55      0.62       141
+        2.0       0.50      0.90      0.64        60
+        3.0       0.95      0.94      0.94       110
+
+avg / total       0.78      0.75      0.75       432
+
+accuracy:  0.747685185185
+------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
+
