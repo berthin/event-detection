@@ -440,6 +440,111 @@ def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
     return (data_training, data_validation, data_testing,
             label_training, label_validation, label_testing)
 
+import _hog
+#use odd pixels_per_cell values
+#tested with (5,5) and (7,7). fails when using (8,8) <-- TODO: check
+def hog_variant_per_action(action = 'boxing', actors_training = [], params_hog = None, n_patterns_per_video = 0):
+    global PATH_KTH_PATTERNS
+    data = []
+    for ith_actor in actors_training:
+        for ith_d in xrange(4):
+            for ith_p in xrange(n_patterns_per_video):
+                pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
+                if pattern is None: continue
+                pattern = (pattern > 0) * 255
+                data.append(_hog.hog_variant_superposition(pattern, **params_hog))
+    return np.array(data)
+
+#classify_visualrhythm_canny_patterns({'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}, 5)
+def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
+    from skimage.feature import hog
+    from sklearn.externals.joblib import Parallel, delayed
+
+    global KTH_CLASSES
+
+    #params_hog = {'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}
+    #n_patterns_per_video = 5
+
+    actors_training = [11, 12, 13, 14, 15, 16, 17, 18]
+    actors_validation = [19, 20, 21, 23, 24, 25, 1, 4]
+    actors_testing = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+
+    data_training_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_training, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_training = np.empty([0, data_training_list[0].shape[1]])
+    label_training = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_training_list):
+        data_training = np.vstack((data_training, datum))
+        label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
+
+    data_validation_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_validation, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_validation = np.empty([0, data_validation_list[0].shape[1]])
+    label_validation = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_validation_list):
+        data_validation = np.vstack((data_validation, datum))
+        label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
+
+    data_testing_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_testing, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_testing = np.empty([0, data_testing_list[0].shape[1]])
+    label_testing = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_testing_list):
+        data_testing = np.vstack((data_testing, datum))
+        label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
+
+    return (data_training, data_validation, data_testing,
+            label_training, label_validation, label_testing)
+
+
+sys.path.append(os.environ['GIT_REPO'] + '/source-code/bag-of-words')
+import bag_of_words
+def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_per_video):
+    from sklearn.externals.joblib import Parallel, delayed
+
+    global KTH_CLASSES
+
+    #params_hog = {'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}
+    #n_patterns_per_video = 5
+
+    actors_training = [11, 12, 13, 14, 15, 16, 17, 18]
+    actors_validation = [19, 20, 21, 23, 24, 25, 1, 4]
+    actors_testing = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+
+    data_training_list = Parallel(n_jobs=-1) (delayed(hog_variant_per_action) (action, actors_training, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_training_bow = np.empty([0, params_hog['orientations']])
+    for ith_action, datum in zip(xrange(4), data_training_list):
+        data_training_bow = np.vstack((data_training_bow, datum.reshape(datum.size/params_hog['orientations'], params_hog['orientations'])))
+
+    cw, codebook_predictor = bag_of_words.build_codebook(data_training_bow, **params_bow)
+
+    #training
+    data_training = np.empty([0, params_bow['number_of_words']])
+    label_training = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_training_list):
+       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations'])) for pattern in datum)
+       data_training = np.vstack((data_training, codes))
+       label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
+
+    #validation
+    data_validation_list = Parallel(n_jobs=-1) (delayed(hog_variant_per_action) (action, actors_validation, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_validation = np.empty([0, params_bow['number_of_words']])
+    label_validation = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_validation_list):
+       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations'])) for pattern in datum)
+       data_validation = np.vstack((data_validation, codes))
+       label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
+
+    #testing
+    data_testing_list = Parallel(n_jobs=-1) (delayed(hog_variant_per_action) (action, actors_testing, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
+    data_testing = np.empty([0, params_bow['number_of_words']])
+    label_testing = np.empty([0])
+    for ith_action, datum in zip(xrange(4), data_testing_list):
+       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations'])) for pattern in datum)
+       data_testing = np.vstack((data_testing, codes))
+       label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
+
+    return (data_training, data_validation, data_testing,
+            label_training, label_validation, label_testing)
+
+
 def run_gridSearch(classifier, args, data_training, label_training, data_validation, label_validation):
     from sklearn import metrics
     return metrics.accuracy_score(classifier(**args).fit(data_training, label_training).predict(data_validation), label_validation)
@@ -474,13 +579,6 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
     grid_search_params_knn = \
       [{'n_neighbors' : [1, 3, 5, 7, 9, 11]}]
 
-    ## BAG OF WORDS
-    #pre_data_train, _ = parse_data3 (data, n_features, train, n_samples_per_class)
-
-    #_, codebook_predictor = bag_of_words.build_codebook (pre_data_train, number_of_words = n_words, clustering_method = 'kmeans')
-
-    #data_train, label_train = Parallel (n_jobs = n_processors) (delayed (parse_data2) (data, n_orientations, idx_train, codebook_predictor, n_words, type_coding, type_pooling) for idx_train in train)
-
     ## Temporaly we are gonna test only one-vs-one SVM linear-rbf kernels
     #elif _type_svm == _kernel_chi_square or _type_svm == _kernel_hik:
     #  grid_search = GridSearchCV (svm.SVC (), grid_search_params_kernel, cv=5, n_jobs=n_processors);
@@ -498,7 +596,6 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
     grid_search_ans = Parallel(n_jobs = -1)(delayed(run_gridSearch)(classifier, args, data_training, label_training, data_validation, label_validation) for args in list(grid_search.ParameterGrid(grid_search_params)))
 
 #grid_search_ans = Parallel(n_jobs=-1)(delayed(metrics.accuracy_score)(label_validation, classifier(**args).fit(data_training, label_training).predict(data_validation) for args in list(grid_search.ParameterGrid(grid_search_params))))
-
 
     best_params = list(grid_search.ParameterGrid(grid_search_params))[grid_search_ans.index(max(grid_search_ans))]
 

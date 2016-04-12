@@ -189,7 +189,7 @@ def hog(image, orientations=9, pixels_per_cell=(8, 8),
         return normalised_blocks
         #return normalised_blocks.ravel()
 
-def hog_variant_superposition (image, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(3, 3), normalise=False):
+def hog_variant_superposition (image, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(3, 3), normalise=False, **_):
     """Extract Histogram of Oriented Gradients (HOG) for a given image.
 
     Compute a Histogram of Oriented Gradients (HOG) by
