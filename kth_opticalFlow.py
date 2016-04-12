@@ -519,7 +519,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
     data_training = np.empty([0, params_bow['number_of_words']])
     label_training = np.empty([0])
     for ith_action, datum in zip(xrange(4), data_training_list):
-       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations'])) for pattern in datum)
+       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
        data_training = np.vstack((data_training, codes))
        label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
 
@@ -528,7 +528,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
     data_validation = np.empty([0, params_bow['number_of_words']])
     label_validation = np.empty([0])
     for ith_action, datum in zip(xrange(4), data_validation_list):
-       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations'])) for pattern in datum)
+       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
        data_validation = np.vstack((data_validation, codes))
        label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
 
@@ -537,7 +537,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
     data_testing = np.empty([0, params_bow['number_of_words']])
     label_testing = np.empty([0])
     for ith_action, datum in zip(xrange(4), data_testing_list):
-       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations'])) for pattern in datum)
+       codes = Parallel(n_jobs=-1)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
        data_testing = np.vstack((data_testing, codes))
        label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
 
