@@ -24,6 +24,7 @@ if use_bow[0] == 'Y' or use_bow[0]=='1':
     clustering_method = raw_input('clustering_method: ')
     type_coding = raw_input('type_coding: ')
     type_pooling = raw_input('type_pooling: ')
+    use_variant_bow = bool(raw_input('use variant bow: ')) #simple do not enter anything
 
     params_bow = {'number_of_words':n_words, 'clustering_method':clustering_method, 'type_coding':type_coding, 'type_pooling':type_pooling}
 
@@ -39,12 +40,12 @@ if use_bow[0] == 'Y' or use_bow[0]=='1':
     (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing) = \
         kth_opticalFlow.classify_bow_visualrhythm_canny_patterns(params_hog, params_bow,
-        n_patterns_per_video)
+        n_patterns_per_video, use_variant_bow)
 else:
     (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing) = \
         kth_opticalFlow.classify_visualrhythm_canny_patterns(params_hog,
-        n_patterns_per_video)
+        n_patterns_per_video, use_variant_bow)
 
 kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation, data_testing, label_training, label_validation, label_testing, type_svm)
 

@@ -496,7 +496,7 @@ def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
 
 sys.path.append(os.environ['GIT_REPO'] + '/source-code/bag-of-words')
 import bag_of_words
-def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_per_video, n_processors=-1):
+def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_per_video, n_processors=-1, use_variant_bow = False):
     from sklearn.externals.joblib import Parallel, delayed
 
     global KTH_CLASSES
@@ -519,27 +519,45 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
     data_training = np.empty([0, params_bow['number_of_words']])
     label_training = np.empty([0])
     for ith_action, datum in zip(xrange(4), data_training_list):
-       codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
-       data_training = np.vstack((data_training, codes))
-       label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
+        if use_variant_bow:
+            codes = []
+            for pattern in datum:
+                super_code = Parallel(n_jobs = n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], data_row.reshape(data_row.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for data_row in pattern)
+                codes.append(np.array(super_code).flatten())
+        else:
+            codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
+        data_training = np.vstack((data_training, codes))
+        label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
 
     #validation
     data_validation_list = Parallel(n_jobs=n_processors) (delayed(hog_variant_per_action) (action, actors_validation, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
     data_validation = np.empty([0, params_bow['number_of_words']])
     label_validation = np.empty([0])
     for ith_action, datum in zip(xrange(4), data_validation_list):
-       codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
-       data_validation = np.vstack((data_validation, codes))
-       label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
+        if use_variant_bow:
+            codes = []
+            for pattern in datum:
+                super_code = Parallel(n_jobs = n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], data_row.reshape(data_row.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for data_row in pattern)
+                codes.append(np.array(super_code).flatten())
+        else:
+            codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
+        data_validation = np.vstack((data_validation, codes))
+        label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
 
     #testing
     data_testing_list = Parallel(n_jobs=n_processors) (delayed(hog_variant_per_action) (action, actors_testing, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
     data_testing = np.empty([0, params_bow['number_of_words']])
     label_testing = np.empty([0])
     for ith_action, datum in zip(xrange(4), data_testing_list):
-       codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
-       data_testing = np.vstack((data_testing, codes))
-       label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
+        if use_variant_bow:
+            codes = []
+            for pattern in datum:
+                super_code = Parallel(n_jobs = n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], data_row.reshape(data_row.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for data_row in pattern)
+                codes.append(np.array(super_code).flatten())
+        else:
+            codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
+        data_testing = np.vstack((data_testing, codes))
+        label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
 
     return (data_training, data_validation, data_testing,
             label_training, label_validation, label_testing)
