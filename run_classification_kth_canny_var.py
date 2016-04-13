@@ -38,7 +38,7 @@ if False:
 if use_bow[0] == 'Y' or use_bow[0]=='1':
     (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing) = \
-        kth_opticalFlow.classify_bow_visualrhythm_canny_patterns(params_hog, param_bow,
+        kth_opticalFlow.classify_bow_visualrhythm_canny_patterns(params_hog, params_bow,
         n_patterns_per_video)
 else:
     (data_training, data_validation, data_testing,
