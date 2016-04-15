@@ -529,7 +529,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
         else:
             codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
         print len(codes), codes[0].shape
-        if not data_training:
+        if data_training is None:
             data_training = codes
         else:
             data_training = np.vstack((data_training, codes))
@@ -548,7 +548,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
                 codes.append(np.array(super_code).flatten())
         else:
             codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
-        if not data_validation:
+        if data_validation is None:
             data_validation = codes
         else:
             data_validation = np.vstack((data_validation, codes))
@@ -567,7 +567,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
                 codes.append(np.array(super_code).flatten())
         else:
             codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
-        if not data_testing:
+        if data_testing is None:
             data_testing = codes
         else:
             data_testing = np.vstack((data_testing, codes))
