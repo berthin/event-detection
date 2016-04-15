@@ -526,6 +526,7 @@ def classify_bow_visualrhythm_canny_patterns(params_hog, params_bow, n_patterns_
                 codes.append(np.array(super_code).flatten())
         else:
             codes = Parallel(n_jobs=n_processors)(delayed(bag_of_words.coding_pooling_per_video)(codebook_predictor, params_bow['number_of_words'], pattern.reshape(pattern.size/params_hog['orientations'], params_hog['orientations']), params_bow['type_coding'], params_bow['type_pooling']) for pattern in datum)
+        print len(codes), codes[0].shape
         data_training = np.vstack((data_training, codes))
         label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
 

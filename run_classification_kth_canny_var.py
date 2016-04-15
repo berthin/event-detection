@@ -40,12 +40,12 @@ if use_bow[0] == 'Y' or use_bow[0]=='1':
     (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing) = \
         kth_opticalFlow.classify_bow_visualrhythm_canny_patterns(params_hog, params_bow,
-        n_patterns_per_video, use_variant_bow)
+        n_patterns_per_video, -1, use_variant_bow)
 else:
     (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing) = \
         kth_opticalFlow.classify_visualrhythm_canny_patterns(params_hog,
-        n_patterns_per_video, use_variant_bow)
+        n_patterns_per_video, -1, use_variant_bow)
 
 kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation, data_testing, label_training, label_validation, label_testing, type_svm)
 
