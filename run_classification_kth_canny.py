@@ -4,7 +4,7 @@ import cv2
 import kth_opticalFlow
 
 PATH_KTH_PATTERNS = \
-    '/home/berthin/Documents/kth-visual_rhythm-horizontal-improved-patterns/'
+    '/home/berthin/Documents/kth-patterns_t1/kth-visual_rhythm-horizontal-improved-patterns/'
 
 n_orientations = int(raw_input('orientations: '))
 pixels_per_cell = map(int, raw_input('pixels_per_cell: ').split(' '))
