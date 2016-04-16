@@ -6,6 +6,7 @@ from pylab import plt
 from sklearn.externals.joblib import Parallel, delayed
 from imutils.object_detection import non_max_suppression
 from subprocess import call, PIPE
+from skimage import io
 
 PATH_KTH = '/home/berthin/Documents/kth/'
 PATH_KTH_OUT = '/home/berthin/Documents/kth-transformed/'
@@ -356,11 +357,16 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
     global PATH_KTH_VR
     global PATH_KTH_PATTERNS
     #
-    init_time = time.time()
-    #
     files = os.listdir(PATH_KTH_VR + action)
     #
-    get_sum = lambda x: x.flatten().sum()
+    #get_sum = lambda x: (x > 0).flatten().sum()
+    #get_sum = lambda x: (x > 0).flatten().sum() * 1.0 /x.size
+    #get_sum = lambda x: x.mean()
+    def get_sum(x):
+        mask = -1 * np.ones([3, 3], np.uint8)
+        mask[1, :] = 2
+        x = cv2.filter2D(x, cv2.CV_8U, mask)
+        return x.mean()
 
     for im_name in files:
         im_0 = io.imread(PATH_KTH_VR + action + '/' + im_name, as_grey = True)
@@ -369,9 +375,11 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
         for im_1 in np.hsplit(im_0, (frame_size[0] / param_VR)):
             for col_1 in xrange(5, im_1.shape[1]):
                 if im_1[:, col_1].sum() >= thr_min_pixels: break
+            print col_1
             if col_1 + 1 >= im_1.shape[1]-5: continue
             for col_2 in xrange(im_1.shape[1]-5, col_1, -1):
                 if im_1[:, col_2].sum() >= thr_min_pixels: break
+            print col_2
             if col_2 == 0: continue
             if col_2 - col_1 + 1 < thr_min_gap: continue
 
@@ -379,22 +387,34 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
             if save_patterns:
                 bag_patterns.append(cv2.resize(pattern, patt_size, cv2.INTER_CUBIC))
                 #bag_patterns.append(pattern)
+        #ith_pattern = 0
+        #for pattern in bag_patterns:
+        #    ith_pattern += 1
+        #    io.imsave('/tmp/test/%s_%s_p%d.bmp' % (action, im_name[:-4], ith_pattern), pattern)
+        #break
         bag_patterns.sort(key = get_sum, reverse = True)
         ith_pattern = 0
+        kernel_A = np.array([[0,0,1],[0,1,0],[1,0,0]], np.uint8)
+        kernel_B = np.array([[1,0,0],[0,1,0],[0,0,1]], np.uint8)
+        kernel_C = np.array([[0,0,0],[1,1,1],[0,0,0]], np.uint8)
+        kernels = [kernel_A, kernel_B, kernel_C]
+
         for pattern in bag_patterns[:n_patterns]:
             ith_pattern += 1
-            io.imsave('%s%s/%s_p%d.bmp' % (PATH_KTH_PATTERNS, action, im_name[:-4], ith_pattern), pattern)
+            #pattern = cv2.resize(pattern, patt_size, cv2.INTER_CUBIC)
+            pattern = np.array(pattern > 0, np.uint8)
+            for k in kernels:
+                pattern = cv2.morphologyEx(pattern, cv2.MORPH_CLOSE, k)
+            io.imsave('%s%s/%s_p%d.bmp' % (PATH_KTH_PATTERNS, action, im_name[:-4], ith_pattern), 255*pattern)
     #
-    finish_time = time.time ()
-    print (finish_time - init_time)
 
 from skimage.feature import hog
 def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n_patterns_per_video = 0):
     global PATH_KTH_PATTERNS
     data = []
     for ith_actor in actors_training:
-        for ith_d in xrange(4):
-            for ith_p in xrange(n_patterns_per_video):
+        for ith_d in xrange(1, 5):
+            for ith_p in xrange(1, 1 + n_patterns_per_video):
                 pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
                 if pattern is None: continue
                 pattern = (pattern > 0) * 255
@@ -638,6 +658,8 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
     print metrics.classification_report (pred, label_testing)
 
     print 'accuracy: ', metrics.accuracy_score(pred, label_testing)
+
+    return pred
 
 
 """
