@@ -22,6 +22,14 @@ params_hog = {'orientations':n_orientations,
     kth_opticalFlow.classify_visualrhythm_canny_patterns(params_hog,
     n_patterns_per_video)
 
-kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation,
-    data_testing, label_training, label_validation, label_testing, type_svm)
+ans = kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation,
+      data_testing, label_training, label_validation, label_testing, type_svm)
 
+
+from scipy import stats
+ans = np.array([stats.mode(x)[0] for x in np.array(ans).reshape(9*4*4, n_patterns_per_video)]).flatten()
+label = np.hstack([np.ones(9*4)*i for i in xrange(4)]).flatten()
+
+from sklearn import metrics
+print metrics.classification_report(ans, label)
+print metrics.accuracy_score(ans, label)
