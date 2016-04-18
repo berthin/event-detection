@@ -1,0 +1,400 @@
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.70      0.74       204
+        1.0       0.73      0.55      0.63       240
+        2.0       0.52      0.98      0.68        95
+        3.0       0.96      0.95      0.95       181
+
+avg / total       0.78      0.75      0.75       720
+
+accuracy:  0.75
+             precision    recall  f1-score   support
+
+        0.0       0.83      0.73      0.78        41
+        1.0       0.81      0.60      0.69        48
+        2.0       0.50      1.00      0.67        18
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.83      0.78      0.79       144
+
+0.784722222222
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.86      0.72      0.78       130
+        1.0       0.74      0.56      0.64       142
+        2.0       0.49      1.00      0.66        53
+        3.0       0.95      0.96      0.96       107
+
+avg / total       0.80      0.76      0.76       432
+
+accuracy:  0.761574074074
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.73      0.80        44
+        1.0       0.81      0.63      0.71        46
+        2.0       0.47      1.00      0.64        17
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.84      0.79      0.80       144
+
+0.791666666667
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.70      0.74       204
+        1.0       0.73      0.55      0.63       240
+        2.0       0.52      0.98      0.68        95
+        3.0       0.96      0.95      0.95       181
+
+avg / total       0.78      0.75      0.75       720
+
+accuracy:  0.75
+             precision    recall  f1-score   support
+
+        0.0       0.83      0.73      0.78        41
+        1.0       0.81      0.60      0.69        48
+        2.0       0.50      1.00      0.67        18
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.83      0.78      0.79       144
+
+0.784722222222
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.86      0.72      0.78       130
+        1.0       0.74      0.56      0.64       142
+        2.0       0.49      1.00      0.66        53
+        3.0       0.95      0.96      0.96       107
+
+avg / total       0.80      0.76      0.76       432
+
+accuracy:  0.761574074074
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.73      0.80        44
+        1.0       0.81      0.63      0.71        46
+        2.0       0.47      1.00      0.64        17
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.84      0.79      0.80       144
+
+0.791666666667
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.68      0.75       217
+        1.0       0.73      0.57      0.64       230
+        2.0       0.52      0.93      0.66       100
+        3.0       0.96      0.99      0.97       173
+
+avg / total       0.78      0.76      0.76       720
+
+accuracy:  0.756944444444
+             precision    recall  f1-score   support
+
+        0.0       0.97      0.69      0.80        51
+        1.0       0.78      0.70      0.74        40
+        2.0       0.47      1.00      0.64        17
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.87      0.81      0.82       144
+
+0.805555555556
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.84      0.72      0.78       126
+        1.0       0.77      0.55      0.64       152
+        2.0       0.44      0.94      0.60        51
+        3.0       0.95      1.00      0.98       103
+
+avg / total       0.80      0.75      0.76       432
+
+accuracy:  0.752314814815
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.70      0.78        46
+        1.0       0.81      0.62      0.70        47
+        2.0       0.42      1.00      0.59        15
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.84      0.78      0.79       144
+
+0.777777777778
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.69      0.74       207
+        1.0       0.71      0.53      0.61       240
+        2.0       0.49      0.94      0.65        95
+        3.0       0.96      0.97      0.96       178
+
+avg / total       0.77      0.74      0.74       720
+
+accuracy:  0.738888888889
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.78      0.83        41
+        1.0       0.81      0.57      0.67        51
+        2.0       0.44      1.00      0.62        16
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.84      0.78      0.79       144
+
+0.784722222222
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.72      0.77       124
+        1.0       0.75      0.53      0.62       152
+        2.0       0.43      0.96      0.59        48
+        3.0       0.95      0.95      0.95       108
+
+avg / total       0.79      0.74      0.74       432
+
+accuracy:  0.738425925926
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.73      0.80        44
+        1.0       0.81      0.59      0.68        49
+        2.0       0.39      1.00      0.56        14
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.84      0.77      0.78       144
+
+0.770833333333
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.68      0.75       217
+        1.0       0.73      0.57      0.64       230
+        2.0       0.52      0.93      0.66       100
+        3.0       0.96      0.99      0.97       173
+
+avg / total       0.78      0.76      0.76       720
+
+accuracy:  0.756944444444
+             precision    recall  f1-score   support
+
+        0.0       0.97      0.69      0.80        51
+        1.0       0.78      0.70      0.74        40
+        2.0       0.47      1.00      0.64        17
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.87      0.81      0.82       144
+
+0.805555555556
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.84      0.72      0.78       126
+        1.0       0.77      0.55      0.64       152
+        2.0       0.44      0.94      0.60        51
+        3.0       0.95      1.00      0.98       103
+
+avg / total       0.80      0.75      0.76       432
+
+accuracy:  0.752314814815
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.70      0.78        46
+        1.0       0.81      0.62      0.70        47
+        2.0       0.42      1.00      0.59        15
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.84      0.78      0.79       144
+
+0.777777777778
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.69      0.74       207
+        1.0       0.71      0.53      0.61       240
+        2.0       0.49      0.94      0.65        95
+        3.0       0.96      0.97      0.96       178
+
+avg / total       0.77      0.74      0.74       720
+
+accuracy:  0.738888888889
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.78      0.83        41
+        1.0       0.81      0.57      0.67        51
+        2.0       0.44      1.00      0.62        16
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.84      0.78      0.79       144
+
+0.784722222222
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.72      0.77       124
+        1.0       0.75      0.53      0.62       152
+        2.0       0.43      0.96      0.59        48
+        3.0       0.95      0.95      0.95       108
+
+avg / total       0.79      0.74      0.74       432
+
+accuracy:  0.738425925926
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.73      0.80        44
+        1.0       0.81      0.59      0.68        49
+        2.0       0.39      1.00      0.56        14
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.84      0.77      0.78       144
+
+0.770833333333
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.72      0.77       124
+        1.0       0.75      0.53      0.62       152
+        2.0       0.43      0.96      0.59        48
+        3.0       0.95      0.95      0.95       108
+
+avg / total       0.79      0.74      0.74       432
+
+accuracy:  0.738425925926
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.73      0.80        44
+        1.0       0.81      0.59      0.68        49
+        2.0       0.39      1.00      0.56        14
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.84      0.77      0.78       144
+
+0.770833333333
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.67      0.72       127
+        1.0       0.59      0.50      0.54       128
+        2.0       0.50      0.78      0.61        69
+        3.0       0.96      0.96      0.96       108
+
+avg / total       0.73      0.71      0.71       432
+
+accuracy:  0.710648148148
+             precision    recall  f1-score   support
+
+        0.0       0.92      0.66      0.77        50
+        1.0       0.64      0.57      0.61        40
+        2.0       0.42      0.88      0.57        17
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.80      0.74      0.75       144
+
+0.743055555556
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.71      0.65      0.68       197
+        1.0       0.62      0.50      0.55       225
+        2.0       0.54      0.82      0.66       119
+        3.0       0.97      0.97      0.97       179
+
+avg / total       0.72      0.71      0.71       720
+
+accuracy:  0.711111111111
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.68      0.77        47
+        1.0       0.72      0.63      0.68        41
+        2.0       0.56      1.00      0.71        20
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.82      0.79      0.79       144
+
+0.791666666667
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.69      0.74       207
+        1.0       0.71      0.53      0.61       240
+        2.0       0.49      0.94      0.65        95
+        3.0       0.96      0.97      0.96       178
+
+avg / total       0.77      0.74      0.74       720
+
+accuracy:  0.738888888889
+             precision    recall  f1-score   support
+
+        0.0       0.89      0.78      0.83        41
+        1.0       0.81      0.57      0.67        51
+        2.0       0.44      1.00      0.62        16
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.84      0.78      0.79       144
+
+0.784722222222
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.79      0.68      0.73       210
+        1.0       0.70      0.60      0.64       211
+        2.0       0.60      0.96      0.74       113
+        3.0       0.97      0.94      0.95       186
+
+avg / total       0.78      0.77      0.76       720
+
+accuracy:  0.765277777778
+             precision    recall  f1-score   support
+
+        0.0       0.86      0.74      0.79        42
+        1.0       0.75      0.64      0.69        42
+        2.0       0.64      1.00      0.78        23
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.83      0.81      0.81       144
+
+0.8125
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.81      0.71      0.75       123
+        1.0       0.74      0.55      0.63       146
+        2.0       0.47      1.00      0.64        51
+        3.0       0.97      0.94      0.95       112
+
+avg / total       0.79      0.75      0.75       432
+
+accuracy:  0.747685185185
+             precision    recall  f1-score   support
+
+        0.0       0.86      0.76      0.81        41
+        1.0       0.83      0.62      0.71        48
+        2.0       0.47      1.00      0.64        17
+        3.0       1.00      0.95      0.97        38
+
+avg / total       0.84      0.79      0.80       144
+
+0.791666666667
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.82      0.68      0.74       215
+        1.0       0.70      0.59      0.64       213
+        2.0       0.58      0.93      0.72       113
+        3.0       0.98      0.99      0.99       179
+
+avg / total       0.79      0.77      0.77       720
+
+accuracy:  0.770833333333
+             precision    recall  f1-score   support
+
+        0.0       0.94      0.71      0.81        48
+        1.0       0.72      0.63      0.68        41
+        2.0       0.53      1.00      0.69        19
+        3.0       1.00      1.00      1.00        36
+
+avg / total       0.84      0.80      0.80       144
+
+0.798611111111
+orientations: pixels_per_cell: cells_per_block: n_patterns_per_video: type_svm:              precision    recall  f1-score   support
+
+        0.0       0.85      0.74      0.79       124
+        1.0       0.74      0.58      0.65       138
+        2.0       0.54      0.95      0.69        61
+        3.0       0.97      0.96      0.97       109
+
+avg / total       0.80      0.78      0.78       432
+
+accuracy:  0.775462962963
+             precision    recall  f1-score   support
+
+        0.0       0.94      0.76      0.84        45
+        1.0       0.78      0.64      0.70        44
+        2.0       0.50      1.00      0.67        18
+        3.0       1.00      0.97      0.99        37
+
+avg / total       0.85      0.81      0.81       144
+
+0.805555555556
