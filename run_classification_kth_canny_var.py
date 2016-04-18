@@ -47,5 +47,13 @@ else:
         kth_opticalFlow.classify_visualrhythm_canny_patterns(params_hog,
         n_patterns_per_video, -1, use_variant_bow)
 
-kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation, data_testing, label_training, label_validation, label_testing, type_svm)
+ans1 = kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation, data_testing, label_training, label_validation, label_testing, type_svm)
 
+
+from scipy import stats
+ans2 = np.array([stats.mode(x)[0] for x in np.array(ans1).reshape(9*4*4, n_patterns_per_video)]).flatten()
+label = np.hstack([np.ones(9*4)*i for i in xrange(4)]).flatten()
+
+from sklearn import metrics
+print metrics.classification_report(ans2, label)
+print metrics.accuracy_score(ans2, label)

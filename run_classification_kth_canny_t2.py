@@ -4,7 +4,7 @@ import cv2
 import kth_opticalFlow
 
 PATH_KTH_PATTERNS = \
-    '/home/berthin/Documents/kth-patterns_t1/kth-visual_rhythm-horizontal-improved-patterns/'
+    '/home/berthin/Documents/kth-patterns_t2/kth-visual_rhythm-horizontal-improved-patterns/'
 
 n_orientations = int(raw_input('orientations: '))
 pixels_per_cell = map(int, raw_input('pixels_per_cell: ').split(' '))
@@ -23,8 +23,7 @@ params_hog = {'orientations':n_orientations,
     n_patterns_per_video)
 
 ans1 = kth_opticalFlow.run_svm_canny_patterns(data_training, data_validation,
-      data_testing, label_training, label_validation, label_testing, type_svm)
-
+    data_testing, label_training, label_validation, label_testing, type_svm)
 
 from scipy import stats
 ans2 = np.array([stats.mode(x)[0] for x in np.array(ans1).reshape(9*4*4, n_patterns_per_video)]).flatten()
