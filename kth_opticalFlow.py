@@ -531,8 +531,8 @@ def hog_variant_per_action(action = 'boxing', actors_training = [], params_hog =
     global PATH_KTH_PATTERNS
     data = []
     for ith_actor in actors_training:
-        for ith_d in xrange(4):
-            for ith_p in xrange(n_patterns_per_video):
+        for ith_d in xrange(1, 5):
+            for ith_p in xrange(1, 1 + n_patterns_per_video):
                 pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
                 if pattern is None: continue
                 pattern = (pattern > 0) * 255
