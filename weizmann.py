@@ -8,255 +8,42 @@ from imutils.object_detection import non_max_suppression
 from subprocess import call, PIPE
 from skimage import io
 
+# for i in bend jack pjump walk wave1 wave2; do mkdir $i; done
+PATH_WEIZMANN = '/home/berthin/Dropbox/UNICAMP/Abnormal_Event_Detection/DataSets/weizmann/'
+PATH_WEIZMANN_VR = '/home/berthin/Documents/weizmann-visual_rhythm-sobel/'
+PATH_WEIZMANN_PATTERNS = \
+    '/home/berthin/Documents/weizmann-visual_rhythm-patterns/'
+WEIZMANN_CLASSES = ['bend', 'jack', 'pjump', 'walk', 'wave1', 'wave2']
+WEIZMANN_CLASSES_INV = {WEIZMANN_CLASSES[idx]:idx for idx in xrange(len(WEIZMANN_CLASSES))}
+WEIZMANN_NUMBER_CLASSES = 6
+WEIZMANN_NUMBER_SAMPLES= 9
+
+# for d in boxing handclapping handwaving walking; do mkdir $d; done
 PATH_KTH = '/home/berthin/Documents/kth/'
-PATH_KTH_OUT = '/home/berthin/Documents/kth-transformed/'
-PATH_KTH_VR = '/home/berthin/Documents/kth-visual_rhythm-canny/'
+PATH_KTH_VR = '/home/berthin/Documents/kth-visual_rhythm-sobel/'
 PATH_KTH_PATTERNS = \
-    '/home/berthin/Documents/kth-visual_rhythm-canny-patterns-morphology/'
+    '/home/berthin/Documents/kth-visual_rhythm-patterns/'
 KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'walking']
 KTH_CLASSES_INV = {KTH_CLASSES[idx]:idx for idx in xrange(len(KTH_CLASSES))}
-
-"""
-ith_class = 0
-list_files = os.listdir(PATH_KTH + KTH_CLASSES[ith_class])
-list_files.sort()
-ext = '.avi'
-list_files = [file for file in list_files if file[0] is not '.' and ext in file]
-"""
-
-#Parallel (n_jobs = 8) (delayed (run_denseOpticalFlowParallel) ((PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), [0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7], video_name]) for video_name in list_files)
-
-#Parallel (n_jobs = 8) (delayed (show_denseOpticalFlow) (cv2.VideoCapture(PATH_KTH + KTH_CLASSES[ith_class] + '/' + video_name), 0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7]) for video_name in list_files)
-
-def empty_function (obj, params):
-    return obj
-
-def run_denseOpticalFlowParallel(video_path, params):
-    cap = cv2.VideoCapture(video_path)
-    show_denseOpticalFlow(cap, *params)
-
-def show_denseOpticalFlow(cap, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, thr, filter1, params1, filter2, params2, video_name=''):
-    frame1 = cap.read()[1]
-    prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
-    hsv = np.zeros_like(frame1)
-    hsv[...,1] = 255
-
-    #while(1):
-    for i in xrange(int(cap.get(cv2.CAP_PROP_FRAME_COUNT) - 1)):
-        ret, frame2 = cap.read()
-        if not ret: break
-        next = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-        next = filter1(next, *params1)
-        flow = cv2.calcOpticalFlowFarneback(prvs,next, None, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags)
-        mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
-        hsv[...,0] = ang*180/np.pi/2
-        hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
-        bgr = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-        print np.mean(hsv[..., 2][:])
-        print np.max(hsv[..., 2][:])
-        cv2.imshow(video_name,filter2(np.array(255*(hsv[..., 2] > thr),np.uint8),*params2))
-        k = cv2.waitKey(30) & 0xff
-        if k == 27:
-            break
-        elif k == ord('s'):
-            cv2.imwrite('opticalfb.png',frame2)
-            cv2.imwrite('opticalhsv.png',bgr)
-        prvs = next
-
-    cap.release()
-    #cv2.destroyAllWindows()
-
-
-
-#show_detectPeople((PATH_KTH + KTH_CLASSES[ith_class] + '/' + list_files[-1]), hog, list_files[-1])
-#hog = cv2.HOGDescriptor()
-#hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-def show_detectPeople(video_path, video_name, winStride, padding, scale):
-    hog = cv2.HOGDescriptor()
-    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-    cap = cv2.VideoCapture(video_path)
-    for i in xrange(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))):
-        ret, frame = cap.read()
-        if not ret: break
-        orig = frame.copy()
-
-    	# detect people in the image
-    	(rects, weights) = hog.detectMultiScale(frame, winStride=winStride, padding=padding, scale=scale)
-
-    	# draw the original bounding boxes
-    	for (x, y, w, h) in rects:
-    		cv2.rectangle(orig, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-    	# apply non-maxima suppression to the bounding boxes using a
-    	# fairly large overlap threshold to try to maintain overlapping
-    	# boxes that are still people
-    	rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in rects])
-    	pick = non_max_suppression(rects, probs=None, overlapThresh=0.65)
-
-    	# draw the final bounding boxes
-    	for (xA, yA, xB, yB) in pick:
-    		cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
-        cv2.imshow(video_name, frame)
-        k = cv2.waitKey(30) & 0xff
-        if k == 27:
-            break
-
-#does not work well
-def show_detectPeople2(video_path, video_name, winStride, padding, scale, meanShift):
-    hog = cv2.HOGDescriptor()
-    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-    cap = cv2.VideoCapture(video_path)
-    for i in xrange(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))):
-        ret, frame = cap.read()
-        if not ret: break
-        orig = frame.copy()
-
-    	# detect people in the image
-    	(rects, weights) = hog.detectMultiScale(frame, winStride=winStride, padding=padding, scale=scale, useMeanshiftGrouping=meanShift)
-
-    	# draw the final bounding boxes
-    	for (xA, yA, xB, yB) in rects:
-    		cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
-        cv2.imshow(video_name, frame)
-        k = cv2.waitKey(30) & 0xff
-        if k == 27:
-            break
-
-#Parallel(n_jobs=6) (delayed(show_detectPeople)((PATH_KTH + KTH_CLASSES[ith_class] + '/' + file_name), hog, file_name) for file_name in list_files[:20])
-
-#show_denseOpticalFlow(obj, 0.7, 3, 1, 5, 3, 1.2, 0, 10)
-#show_denseOpticalFlow(obj, 0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [5])
-#last tryshow_denseOpticalFlow(obj, 0.7, 3, 1, 5, 3, 1.2, 0, 10, empty_function, [None], cv2.medianBlur, [7])
-
-def read_boundingBox(file_name):
-    global KTH_CLASSES_INV
-    global PATH_KTH
-    #person number (1-25) + scenario number (1-4) + action number (1-6) (1-boxing, 2-hand clapping, 3-hand waving, 4-jogging, 5-running, 6-walking)+ sequence number (1-4) + start frame + end frame +             bounding box information (ymin xmin ymax xmax) for each frame
-    inFile = open(file_name, 'r')
-    inFile.readline()
-    inFile.readline()
-    while True:
-        seq1 = inFile.readline()
-        seq2 = inFile.readline()
-        seq3 = inFile.readline()
-        seq4 = inFile.readline()
-        arr = np.array([int(x) for x in seq1.split(' ') if x.isdigit()])
-        video_name = 'person%02d_%s_d%d_uncomp.avi' % (arr[0], KTH_CLASSES[arr[2] - 1], arr[1])
-        cap = cv2.VideoCapture(PATH_KTH + KTH_CLASSES[arr[2] - 1] + '/' + video_name)
-        print cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        for seq in [seq1, seq2, seq3, seq4]:
-            print 'new seq'
-            arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
-            start_frame, end_frame = arr[4:6]
-            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-            for ymin, xmin, ymax, xmax in np.hsplit(arr[6:], end_frame-start_frame+1):
-                ret, frame = cap.read()
-                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-                cv2.imshow(video_name, frame)
-                k = cv2.waitKey(30) & 0xff
-                if k == 27:
-                    break
-        break
-    inFile.close()
-
-
-def read_boundingBox_minmax(file_name, frame_size, padding = 10):
-    global PATH_KTH
-    global KTH_CLASSES
-    #person number (1-25) + scenario number (1-4) + action number (1-6) (1-boxing, 2-hand clapping, 3-hand waving, 4-jogging, 5-running, 6-walking)+ sequence number (1-4) + start frame + end frame +             bounding box information (ymin xmin ymax xmax) for each frame
-    inFile = open(file_name, 'r')
-    inFile.readline()
-    inFile.readline()
-    while True:
-        seq1 = inFile.readline()
-        seq2 = inFile.readline()
-        seq3 = inFile.readline()
-        seq4 = inFile.readline()
-        arr = np.array([int(x) for x in seq1.split(' ') if x.isdigit()])
-        video_name = 'person%02d_%s_d%d_uncomp.avi' % (arr[0], KTH_CLASSES[arr[2] - 1], arr[1])
-        cap = cv2.VideoCapture(PATH_KTH + KTH_CLASSES[arr[2] - 1] + '/' + video_name)
-        print cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        for seq in [seq1, seq2, seq3, seq4]:
-            print 'new seq'
-            arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
-            start_frame, end_frame = arr[4:6]
-            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-            bounds = arr[6:].reshape(end_frame - start_frame + 1, 4)
-            ymin, xmin, ymax, xmax = [np.min(bounds[:, i]) for i in xrange(4)]
-
-            ymin = max(ymin - padding, 0)
-            xmin = max(xmin - padding, 0)
-            ymax = min(ymax + padding, frame_size[0] - 1)
-            xmax = max(xmax + padding, frame_size[1] - 1)
-
-            for ith_frame in xrange(end_frame-start_frame+1):
-                ret, frame = cap.read()
-                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-                cv2.imshow(video_name, frame)
-                k = cv2.waitKey(30) & 0xff
-                if k == 27:
-                    break
-        break
-    inFile.close()
-
-def get_boundingBoxes(file_name, size, show=False):
-    global KTH_CLASSES_INV
-    global PATH_KTH
-    global PATH_KTH_OUT
-    #person number (1-25) + scenario number (1-4) + action number (1-6) (1-boxing, 2-hand clapping, 3-hand waving, 4-jogging, 5-running, 6-walking)+ sequence number (1-4) + start frame + end frame +             bounding box information (ymin xmin ymax xmax) for each frame
-    inFile = open(file_name, 'r')
-    inFile.readline()
-    inFile.readline()
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    counter = 0
-    for i in xrange(0):
-        inFile.readline()
-        counter += 1
-    seq = inFile.readline()
-    while len(seq) > 0:
-        arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
-        video_name = 'person%02d_%s_d%d_uncomp.avi' % (arr[0], KTH_CLASSES[arr[2] - 1], arr[1])
-        cap_in = cv2.VideoCapture(PATH_KTH + KTH_CLASSES[arr[2] - 1] + '/' + video_name)
-        #cap_out = cv2.VideoWriter(PATH_KTH_OUT + KTH_CLASSES[arr[2] - 1] + '/' + video_name, fourcc, cap_in.get(cv2.CAP_PROP_FPS), size)
-
-        while True:
-            print video_name
-            call(['nohup', 'mkdir', '/tmp/' + video_name, '>', '/dev/null', '2>1'])
-            idx_frame = 0
-            counter += 1
-            print counter
-            arr = np.array([int(x) for x in seq.split(' ') if x.isdigit()])
-            start_frame, end_frame = arr[4:6]
-            start_frame, end_frame = start_frame - 1, end_frame - 1
-            cap_in.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-            for ymin, xmin, ymax, xmax in np.hsplit(arr[6:], end_frame-start_frame+1):
-                ret, frame = cap_in.read()
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                frame = cv2.resize(frame[ymin:ymax, xmin:xmax], size, cv2.INTER_CUBIC)
-                #cap_out.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR))
-                cv2.imwrite('/tmp/' + video_name + '/' + str(idx_frame) + video_name[:-3] + 'png', frame)
-                idx_frame += 1
-                if show:
-                    cv2.imshow(video_name, frame)
-                    k = cv2.waitKey(30) & 0xff
-                    if k == 27:
-                        break
-            seq = inFile.readline()
-            prefix = ' '.join(map(str, arr[:3]))
-            if not seq.startswith(prefix):
-                break
-        call(['ffmpeg', '-i', '/tmp/'+video_name+'/'+'%d'+video_name[:-3]+'png', '-vcodec', 'mpeg4', '-y', PATH_KTH_OUT+KTH_CLASSES[arr[2] - 1] + '/' + video_name[:-3]+'mp4'])
-        cap_in.release()
-        print '----'
-        #cap_out.release()
-        #break
-    inFile.close()
-
+KTH_NUMBER_CLASSES = 4
 
 sys.path.append(os.environ['GIT_REPO'] + '/source-code/visual-rhythm')
 import visual_rhythm
+reload(visual_rhythm)
 
-#read_kth_info(PATH_KTH + 'info-kth.in')
+def read_weizmann_info (list_actions = 'all'):
+    global PATH_WEIZMANN
+    import re
+    if list_actions == 'all':
+        global WEIZMANN_CLASSES
+        list_actions = WEIZMANN_CLASSES
+    weizmann_info = {}
+    for action in list_actions:
+        for file_name in os.listdir(PATH_WEIZMANN + action):
+            if file_name[-3:] == 'avi': weizmann_info[(action, file_name.split('_')[0]) ] = file_name[:-4]
+    return weizmann_info
+
+
 def read_kth_info (path_to_file, list_actions = 'all'):
     import re
     if list_actions == 'all':
@@ -277,64 +64,315 @@ def read_kth_info (path_to_file, list_actions = 'all'):
         m_kth_info[(ith_person, action, ith_d)] = frame_intervals
     return m_kth_info
 
-#search_in_kth_info(kth_info, (1, 'boxing', None))
-
-def search_in_kth_info (m_kth_info, (ith_person, action, ith_d)):
-    import re
-    param_ith_person = '[0-9]+' if not ith_person else str(ith_person)
-    param_action = '[a-z]+' if not action else action
-    param_ith_d = '[0-9]+' if not ith_d else str(ith_d)
-    return [(key, value) for key, value in m_kth_info.items() if re.search('_%s_%s_%s_' % (param_ith_person, param_action, param_ith_d), '_%s_' %'_'.join(map(str, key)))]
-
 #according to an analysis, the min-max frame-interval is 68 among all the considered actions
-def get_visualrhythm_improved_short_sequences(m_kth_info, n_frames=68, fraction = 1/4, type_visualrhythm = 'horizontal', params = None, frame_size = (120, 160), sigma_canny = 2.5):
-    from skimage import feature
-    global PATH_KTH
-    global PATH_KTH_VR
-    for key, value in m_kth_info.items():
-        ith_person, action, ith_d = key
-        if len(value) == 0: continue
-        cap = cv2.VideoCapture('%s%s/person%02d_%s_d%d_uncomp.avi' % (PATH_KTH, action, ith_person, action, ith_d))
-        for start_frame, end_frame in value:
-            diff = end_frame - start_frame + 1
-            if diff < n_frames: continue
-            img_vr = []
-            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame + diff * fraction)
-            for ith_frame in xrange(start_frame + diff * fraction, (end_frame - diff * fraction) + 1):
-                _, frame = cap.read()
-                img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params))
-            img_vr = np.array(img_vr)
-            img_vr = feature.canny(img_vr, sigma_canny) * 255
-            cv2.imwrite('%s%s/person%02d_%s_d%d.png' % (PATH_KTH_VR, action, ith_person, action, ith_d), img_vr)
-            break
-        cap.release()
 
 #test using all the sequence
-def get_visualrhythm_improved_whole_sequences(m_kth_info, type_visualrhythm = 'horizontal', params = None, frame_size = (120, 160), sigma_canny = 2.5):
+def get_visualrhythm_improved_whole_sequences(weizmann_info, type_visualrhythm = 'horizontal', params_vr = None, frame_size = (120, 160), frame_range=None,  n_frames = 10, sigma_canny = 2.5):
+    from skimage import feature, morphology, filters
+    global PATH_WEIZMANN
+    global PATH_WEIZMANN_VR
+    global PATH_WEIZMANN_PATTERNS
+    start_frame, end_frame = frame_range
+
+    for action, person in weizmann_info.items():
+        action = action[0]
+        cap = cv2.VideoCapture('%s%s/%s.avi' % (PATH_WEIZMANN, action, person))
+        print PATH_WEIZMANN + action+ '/' + person
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        print cap.isOpened()
+        ith_frame = 0
+        img_vr = []
+        for counter in xrange(start_frame, end_frame + 1):
+            if ith_frame > n_frames:break
+            ith_frame +=1
+            _, frame = cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params_vr))
+        if len(img_vr) < 10: break
+        img_vr = np.array(img_vr)
+        #img_vr = feature.canny(img_vr, sigma_canny) * 255
+        #img_vr = cv2.medianBlur(img_vr, 3)
+        print ('%s%s/%s.png' % (PATH_WEIZMANN_VR, action, person))
+        cv2.imwrite('%s%s/%s.png' % (PATH_WEIZMANN_VR, action, person), img_vr)
+        cv2.imwrite('%s%s/__%s.png' % (PATH_WEIZMANN_VR, action, person), cv2.normalize(filters.sobel(img_vr), None, 0, 255, cv2.NORM_MINMAX))
+
+
+        thr_coe_var = 1.0
+        ith_p = 1
+        I = np.copy(img_vr)
+        I = filters.sobel(I)
+        #I = cv2.normalize(I, None, 0, 255, cv2.NORM_MINMAX)
+        for ir in xrange(0, I.shape[1] - frame_size[1], frame_size[1]):
+            patt = I[:, ir:ir+frame_size[1]]
+            patt = patt[:, 20:frame_size[1]-20]
+            coe_var = patt.std(axis=0) / patt.mean(axis=0)
+            for col0 in xrange(0, patt.shape[1]):
+                if coe_var[col0] > thr_coe_var: break
+            for col1 in xrange(patt.shape[1]-1, 0, -1):
+                if coe_var[col1] > thr_coe_var: break
+            if (col1 - col0 + 1) < 10: continue
+            cv2.imwrite('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), cv2.normalize(filters.sobel(patt[:, col0:col1+1]), None, 0, 255, cv2.NORM_MINMAX))
+            ith_p += 1
+
+        if False:
+            for ir in xrange(0, img_vr.shape[1] - frame_size[1], frame_size[1]):
+               img_vr[:, ir:ir+frame_size[1]] = feature.canny(img_vr[:, ir:ir+frame_size[1]], 1.5)
+            cv2.imwrite('%s%s/_%s.png' % (PATH_WEIZMANN_VR, action, person), img_vr * 255)
+
+            elem = np.zeros([7, 7]); elem[:, 7/2] = 1;
+            img_vr =(img_vr - morphology.opening(img_vr, elem))
+            img_vr = morphology.remove_small_objects(img_vr, min_size=10)
+
+            cv2.imwrite('%s%s/+%s.png' % (PATH_WEIZMANN_VR, action, person), img_vr * 255)
+
+            kernel_A = np.array([[0,0,1],[0,1,0],[1,0,0]], np.uint8)
+            kernel_B = np.array([[1,0,0],[0,1,0],[0,0,1]], np.uint8)
+            kernel_C = np.array([[0,0,0],[1,1,1],[0,0,0]], np.uint8)
+            kernel_D = np.array([[0,1,0],[0,1,0],[0,1,0]], np.uint8)
+            #kernels = [kernel_A, kernel_B]#, kernel_C, kernel_D]
+            kernels = [kernel_A, kernel_B]
+
+            for k in [kernel_A, kernel_B]:
+                img_vr = img_vr - cv2.morphologyEx(img_vr, cv2.MORPH_DILATE, k)
+
+
+            old = np.copy(img_vr)
+            while True:
+                for k in [kernel_A, kernel_B, kernel_C, kernel_D]:
+                    img_vr = cv2.morphologyEx(img_vr, cv2.MORPH_CLOSE, k)
+                if (old == img_vr).all(): break
+                old = np.copy(img_vr)
+
+
+            cv2.imwrite('%s%s/-%s.png' % (PATH_WEIZMANN_VR, action, person), img_vr * 255)
+
+            cap.release()
+
+def get_visualrhythm_sobel(weizmann_info, type_visualrhythm = 'horizontal', params_vr = None, frame_size = (120, 160), frame_range=None,  n_frames = 10):
+    import skimage.feature
+    import skimage.morphology
+    import skimage.filters
+    from skimage import measure
+    from scipy import ndimage
+
+    global PATH_WEIZMANN
+    global PATH_WEIZMANN_VR
+    global PATH_WEIZMANN_PATTERNS
+    start_frame, end_frame = frame_range
+
+    process_whole_video = end_frame == -1
+    for action, person in weizmann_info.items():
+        action = action[0]
+        cap = cv2.VideoCapture('%s%s/%s.avi' % (PATH_WEIZMANN, action, person))
+        print person
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        ith_frame = 0
+        img_vr = []
+        if process_whole_video: end_frame = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+        for counter in xrange(start_frame, end_frame + 1):
+            if ith_frame > n_frames:break
+            ith_frame +=1
+            _, frame = cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params_vr))
+        if len(img_vr) < 10: break
+        img_vr = np.array(img_vr)
+        img_vr_sobel = skimage.filters.sobel(img_vr)
+        img_vr_sobel_norm = cv2.normalize(img_vr_sobel, None, 0, 255, cv2.NORM_MINMAX)
+
+        cv2.imwrite('%s%s/%s.png' % (PATH_WEIZMANN_VR, action, person), img_vr_sobel_norm)
+
+        ith_p = 1
+        n_win = 9
+        mask = np.ones([n_win, n_win]) / (1. * n_win * n_win)
+        for ic in xrange(0, img_vr_sobel.shape[1] - frame_size[1], frame_size[1]):
+            patt = img_vr_sobel[:, ic:ic+frame_size[1]]
+            patt = patt[:, 20:frame_size[1]-20]
+            _mean = ndimage.filters.convolve(patt, mask)
+            _sd = (ndimage.filters.convolve(patt * patt, mask) - _mean * _mean)
+            _coef = _mean / (1 + _sd)
+
+            if _coef.max() < 0.1: continue
+            cv2.imwrite('/tmp/patt.png', cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX))
+            original = np.copy(patt)
+            patt = _coef
+            cv2.imwrite('/tmp/coef.png', cv2.normalize(_coef, None, 0, 255, cv2.NORM_MINMAX))
+            print 'wrote'
+            return True
+            patt = cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            _, patt = cv2.threshold(patt, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+            for cmin in xrange(0, patt.shape[1]):
+                if patt[:, cmin].max() > 0: break
+            for cmax in xrange(patt.shape[1]-1, 0, -1):
+                if patt[:, cmax].max() > 0: break
+            n_con = (measure.label(patt)).max()
+            if (cmax - cmin + 1) > 80 and n_con > 2: continue
+            patt = patt[:, cmin: cmax+1]
+            patt = cv2.normalize(original[:, cmin:cmax+1], None, 0, 255, cv2.NORM_MINMAX)
+            patt = cv2.resize(patt, (100, 100), cv2.INTER_CUBIC)
+            #patt = cv2.adaptiveThreshold(patt, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
+            cv2.imwrite('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), patt)
+            #cv2.imwrite('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), _coef)
+            ith_p += 1
+            if ith_p == 4: break
+
+def classify_sobel_weizmann(weizmann_info):
+    from scipy import stats
+    from sklearn import svm
+    from sklearn import neighbors
+    from sklearn import cross_validation
+    from sklearn import metrics
     from skimage import feature
+
+    global PATH_WEIZMANN_PATTERNS
+    global WEIZMANN_CLASSES_INV
+    global WEIZMANN_NUMBER_CLASSES
+    global WEIZMANN_NUMBER_SAMPLES
+
+    bag_features = [[] for i in xrange(WEIZMANN_NUMBER_CLASSES)]
+
+    for action, person in weizmann_info.items():
+        action = action[0]
+        features_per_pattern = []
+        for ith_p in xrange(1,4):
+            pattern = cv2.imread('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), False)
+            pattern_hog = feature.hog(pattern, orientations=9, pixels_per_cell=(8,8), cells_per_block=(2,2)).flatten()
+            features_per_pattern.append(pattern_hog)
+        bag_features[WEIZMANN_CLASSES_INV[action]].append(features_per_pattern)
+    bag_features = np.array(bag_features)
+
+    cv_indexes = cross_validation.LeaveOneOut(WEIZMANN_NUMBER_SAMPLES)
+    hog_len = bag_features.shape[-1]
+    acc_score = []
+    answers = None
+    labels = None
+    for idx_train, idx_test in cv_indexes:
+        train = bag_features[:, idx_train, ...]
+        test = bag_features[:, idx_test, ...]
+
+        label_train = np.repeat(range(1, WEIZMANN_NUMBER_CLASSES + 1), train.shape[1] * train.shape[2])
+        label_test = range(1, WEIZMANN_NUMBER_CLASSES + 1)
+
+        train = train.reshape(train.size / hog_len, hog_len)
+        test = test.reshape(test.size / hog_len, hog_len)
+
+        clf = svm.SVC(kernel='rbf', C=100).fit(train, label_train)
+        #clf = svm.SVC(kernel='poly', degree=1).fit(train, label_train)
+        #clf = neighbors.KNeighborsClassifier(n_neighbors = 1).fit(train, label_train)
+
+        pred = clf.predict(test)
+        pred = pred.reshape(pred.size/3, 3)
+
+        output = []
+        for ans in pred:
+           output.append(stats.mode(ans)[0])
+
+        acc_score.append(metrics.accuracy_score(label_test, output))
+        output = np.array(output)
+        label_test = np.array(label_test)
+        answers = np.vstack((answers, output)) if answers is not None else output
+        labels = np.hstack((labels, label_test)) if labels is not None else label_test
+        #print metrics.accuracy_score(label_test, output)
+    print acc_score
+    answers = answers.flatten()
+    labels = labels.flatten()
+    print metrics.classification_report(answers, labels)
+    print np.mean(acc_score)
+
+def filter_patterns(x):
+    #x = morphology.skeletonize((x > 0).astype(np.uint8))
+    #x = morphology.closing(x, np.array([[0,1,0],[0,1,0],[0,1,0]]))
+    x = 1 * (x > 0)
+    x = np.vstack((x, np.zeros([1, x.shape[1]])))
+    change = 0
+    for col in xrange(10, x.shape[1], 10):
+        last = 0
+        for val in x[:, col]:
+            change += 1 if last == 1 and val == 0 else 0
+            last = val
+    return change
+
+def get_sum_vertical(x):
+    x = np.uint8(x)
+    return np.sum([filter_patterns(x & ((1 << i) | (1 << (i + 1)))) for i in xrange(5, 8)])
+
+def get_visualrhythm_sobel_kth(kth_info, type_visualrhythm = 'horizontal', params_vr = None, frame_size = (120, 160), frame_range=None,  n_frames = 10, n_patterns = 5):
+    import skimage.feature
+    import skimage.morphology
+    import skimage.filters
+    from skimage import measure
+    from scipy import ndimage
+
     global PATH_KTH
     global PATH_KTH_VR
-    for key, value in m_kth_info.items():
+    global PATH_KTH_PATTERNS
+
+    for key, value in kth_info.items():
         ith_person, action, ith_d = key
         if len(value) == 0: continue
-        print 'person%02d_%s_d%d_uncomp.avi' % (ith_person, action, ith_d)
         cap = cv2.VideoCapture('%s%s/person%02d_%s_d%d_uncomp.avi' % (PATH_KTH, action, ith_person, action, ith_d))
+        ith_frame = 0
         ith_p = 1
         for start_frame, end_frame in value:
             img_vr = []
             cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-            for ith_frame in xrange(start_frame, end_frame + 1):
+            for counter in xrange(start_frame, end_frame + 1):
+                #if ith_frame > n_frames:break
+                ith_frame +=1
                 _, frame = cap.read()
                 if frame is None: break
-                img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params))
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params_vr))
             if len(img_vr) < 10: break
             img_vr = np.array(img_vr)
-            img_vr = feature.canny(img_vr, sigma_canny) * 255
-            cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_VR, action, ith_person, action, ith_d, ith_p), img_vr)
-            ith_p += 1
-        cap.release()
+            img_vr_sobel = skimage.filters.sobel(img_vr)
+            img_vr_sobel_norm = cv2.normalize(img_vr_sobel, None, 0, 255, cv2.NORM_MINMAX)
+
+            cv2.imwrite('%s%s/person%02d_%s_d%d_uncomp.png' % (PATH_KTH_VR, action, ith_person, action, ith_d), img_vr_sobel_norm)
+
+            n_win = 9
+            mask = np.ones([n_win, n_win]) / (1. * n_win * n_win)
+            bag_patterns = []
+            for ic in xrange(0, img_vr_sobel.shape[1] - frame_size[1], frame_size[1]):
+                patt = img_vr_sobel[:, ic:ic+frame_size[1]]
+                patt = patt[:, 20:frame_size[1]-20]
+                _mean = ndimage.filters.convolve(patt, mask)
+                _sd = (ndimage.filters.convolve(patt * patt, mask) - _mean * _mean)
+                _coef = _mean / (1 + _sd)
+
+                if _coef.max() < 0.1: continue
+                original = np.copy(patt)
+                patt = _coef
+                #cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), cv2.normalize(_coef, None, 0, 255, cv2.NORM_MINMAX))
+                patt = cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                _, patt = cv2.threshold(patt, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+                for cmin in xrange(0, patt.shape[1]):
+                    if patt[:, cmin].max() > 0: break
+                for cmax in xrange(patt.shape[1]-1, 0, -1):
+                    if patt[:, cmax].max() > 0: break
+                n_con = (measure.label(patt)).max()
+                if (cmax - cmin + 1) > 80 and n_con > 2: continue
+                patt = patt[:, cmin: cmax+1]
+                patt = cv2.normalize(original[:, cmin:cmax+1], None, 0, 255, cv2.NORM_MINMAX)
+                patt = cv2.resize(patt, (100, 100), cv2.INTER_CUBIC)
+                #patt = cv2.adaptiveThreshold(patt, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
+
+                bag_patterns.append(patt);
+                #cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), patt)
+                #cv2.imwrite('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), _coef)
+                ith_p += 1
+                #if ith_p == 4: break
+            bag_patterns.sort(key = get_sum_vertical, reverse = True)
+            ith_p = 1
+            for patt in bag_patterns[:n_patterns]:
+                cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), patt)
+                ith_p += 1
 
 
+
+##########################
 def extract_patterns_smart(action = 'boxing', nFrames = 50, frame_size = None, patt_size = (30, 50), n_patterns = 3, show = False, save_patterns = False, thr_std = 15):
     global PATH_KTH_VR
     global PATH_KTH_PATTERNS
@@ -438,6 +476,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
             #kernels = [kernel_A, kernel_B]#, kernel_C, kernel_D]
             kernels = []
 
+            print len(bag_patterns),
             for pattern in bag_patterns[:n_patterns]:
                 ith_pattern += 1
                 #pattern = cv2.resize(pattern, patt_size, cv2.INTER_CUBIC)
@@ -445,6 +484,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
                 for k in kernels:
                     pattern = cv2.morphologyEx(pattern, cv2.MORPH_CLOSE, k)
                 #pattern = morphology.skeletonize(pattern)
+
                 io.imsave('%s%s/%s_p%d.bmp' % (PATH_KTH_PATTERNS, action, last_im_name[:-7], ith_pattern), 255*pattern)
             bag_patterns = []
         else:
@@ -453,7 +493,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
         if im_name[0] == 'e': break
         im_0 = io.imread(PATH_KTH_VR + action + '/' + im_name, as_grey = True)
         #extract patterns for same video
-        for im_1 in np.hsplit(im_0, (frame_size[0] / param_VR)):
+        for im_1 in np.hsplit(im_0, im_0.shape[1] // frame_size[1]):
             for col_1 in xrange(5, im_1.shape[1]):
                 if im_1[:, col_1].sum() >= thr_min_pixels: break
             if col_1 + 1 >= im_1.shape[1]-5: continue
@@ -472,7 +512,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
             if row_2 - row_1 + 1 < thr_min_gap: continue
 
             pattern = pattern[row_1:row_2+1, :]
-            if pattern.size < 100*100*0.8: continue
+            if pattern.size < 100*100*0.95: continue
 
             if save_patterns:
                 bag_patterns.append(cv2.resize(pattern, patt_size, cv2.INTER_CUBIC))
