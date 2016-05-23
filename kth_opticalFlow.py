@@ -317,7 +317,8 @@ def get_visualrhythm_improved_whole_sequences(m_kth_info, type_visualrhythm = 'h
     for key, value in m_kth_info.items():
         ith_person, action, ith_d = key
         if len(value) == 0: continue
-        print 'person%02d_%s_d%d_uncomp.avi' % (ith_person, action, ith_d)
+        #if not(ith_person == 6 and action == 'boxing' and ith_d == 1): continue
+        #print 'person%02d_%s_d%d_uncomp.avi' % (ith_person, action, ith_d)
         cap = cv2.VideoCapture('%s%s/person%02d_%s_d%d_uncomp.avi' % (PATH_KTH, action, ith_person, action, ith_d))
         ith_p = 1
         for start_frame, end_frame in value:
@@ -326,13 +327,22 @@ def get_visualrhythm_improved_whole_sequences(m_kth_info, type_visualrhythm = 'h
             for ith_frame in xrange(start_frame, end_frame + 1):
                 _, frame = cap.read()
                 if frame is None: break
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
                 img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params))
             if len(img_vr) < 10: break
             img_vr = np.array(img_vr)
             img_vr = feature.canny(img_vr, sigma_canny) * 255
             cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_VR, action, ith_person, action, ith_d, ith_p), img_vr)
+            #for ir in xrange(0, img_vr.shape[1] - 160, 160):
+            #   img_vr[:, ir:ir+160] = feature.canny(img_vr[:, ir:ir+160], 1.5)
+            #cv2.imwrite('%s%s/__person%02d_%s_d%d_p%d.png' % (PATH_KTH_VR, action, ith_person, action, ith_d, ith_p), img_vr * 255)
             ith_p += 1
         cap.release()
+
+
+def run_parallel_vr_extraction(path, action):
+    kth_info = read_kth_info(path, list_actions = action)
+    get_visualrhythm_improved_whole_sequences(kth_info, type_visualrhythm = 'horizontal', params = [5], frame_size = (120, 160), sigma_canny = 1.5)
 
 
 def extract_patterns_smart(action = 'boxing', nFrames = 50, frame_size = None, patt_size = (30, 50), n_patterns = 3, show = False, save_patterns = False, thr_std = 15):
@@ -438,6 +448,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
             #kernels = [kernel_A, kernel_B]#, kernel_C, kernel_D]
             kernels = []
 
+            #print len(bag_patterns),
             for pattern in bag_patterns[:n_patterns]:
                 ith_pattern += 1
                 #pattern = cv2.resize(pattern, patt_size, cv2.INTER_CUBIC)
@@ -445,6 +456,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
                 for k in kernels:
                     pattern = cv2.morphologyEx(pattern, cv2.MORPH_CLOSE, k)
                 #pattern = morphology.skeletonize(pattern)
+
                 io.imsave('%s%s/%s_p%d.bmp' % (PATH_KTH_PATTERNS, action, last_im_name[:-7], ith_pattern), 255*pattern)
             bag_patterns = []
         else:
@@ -453,7 +465,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
         if im_name[0] == 'e': break
         im_0 = io.imread(PATH_KTH_VR + action + '/' + im_name, as_grey = True)
         #extract patterns for same video
-        for im_1 in np.hsplit(im_0, (frame_size[0] / param_VR)):
+        for im_1 in np.hsplit(im_0, im_0.shape[1] // frame_size[1]):
             for col_1 in xrange(5, im_1.shape[1]):
                 if im_1[:, col_1].sum() >= thr_min_pixels: break
             if col_1 + 1 >= im_1.shape[1]-5: continue
@@ -472,7 +484,7 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
             if row_2 - row_1 + 1 < thr_min_gap: continue
 
             pattern = pattern[row_1:row_2+1, :]
-            if pattern.size < 100*100*0.8: continue
+            if pattern.size < 100*100*0.95: continue
 
             if save_patterns:
                 bag_patterns.append(cv2.resize(pattern, patt_size, cv2.INTER_CUBIC))
@@ -485,6 +497,26 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
 
     #
 
+##if __name__ == '__main__':
+    ##global PATH_KTH, KTH_CLASSES
+    # import time
+    # time1 = time.time()
+
+    ##Parallel(n_jobs=-1)(delayed(run_parallel_vr_extraction)(PATH_KTH + 'info-kth.in', [action]) for action in KTH_CLASSES)
+    #kth_info = read_kth_info (PATH_KTH + 'info-kth.in', list_actions = 'all')
+    #get_visualrhythm_improved_whole_sequences(kth_info, type_visualrhythm = 'horizontal', params = [5], frame_size = (120, 160), sigma_canny = 1.5)
+
+    # time2 = time.time()
+    # print time2 - time1
+
+    #import time
+    #time1 = time.time()
+
+    #Parallel(n_jobs=-1)(delayed(extract_patterns_smart_var)(action, frame_size=(120, 160), patt_size=(100,100), n_patterns=5, save_patterns=True) for action in KTH_CLASSES)
+
+    #time2 = time.time()
+    #print time2 - time1
+
 from skimage.feature import hog
 def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n_patterns_per_video = 0):
     global PATH_KTH_PATTERNS
@@ -492,9 +524,9 @@ def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n
     for ith_actor in actors_training:
         for ith_d in xrange(1, 5):
             for ith_p in xrange(1, 1 + n_patterns_per_video):
-                pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
+                pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
                 if pattern is None: continue
-                pattern = (pattern > 0) * 255
+                #pattern = (pattern > 0) * 255
                 data.append(hog(pattern, **params_hog))
     return np.array(data)
 

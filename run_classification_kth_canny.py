@@ -2,9 +2,12 @@ import numpy as np
 import cv2
 
 import kth_opticalFlow
+import weizmann
 
-PATH_KTH_PATTERNS = \
-    '/home/berthin/Documents/kth-patterns_t1/kth-visual_rhythm-canny-patterns/'
+#PATH_KTH_PATTERNS = \
+#    '/home/berthin/Documents/kth-patterns_t1/kth-visual_rhythm-canny-patterns-morphology/'
+
+kth_opticalFlow.PATH_KTH_PATTERNS = weizmann.PATH_KTH_PATTERNS
 
 n_orientations = int(raw_input('orientations: '))
 pixels_per_cell = map(int, raw_input('pixels_per_cell: ').split(' '))
