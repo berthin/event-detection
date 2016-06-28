@@ -27,6 +27,16 @@ KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'walking']
 KTH_CLASSES_INV = {KTH_CLASSES[idx]:idx for idx in xrange(len(KTH_CLASSES))}
 KTH_NUMBER_CLASSES = 4
 
+PATH_SHEFFIELD = '/home/berthin/Documents/SheffieldKinectGesture/'
+PATH_SHEFFIELD_VR = '/home/berthin/Documents/sheffield-visual_rhythm-sobel/'
+PATH_SHEFFIELD_PATTERNS = \
+    '/home/berthin/Documents/sheffield-visual_rhythm-patterns/'
+SHEFFIELD_CLASSES = [None, 'circle', 'triangle', 'updown', 'rightleft', 'wave', 'z', 'cross', 'comehere', 'turnaround', 'pat']
+SHEFFIELD_CLASSES_INV = {SHEFFIELD_CLASSES[idx]:idx for idx in xrange(len(SHEFFIELD_CLASSES))}
+SHEFFIELD_NUMBER_CLASSES = 10
+SHEFFIELD_VIDEO_MODE = {'K':'dep', 'M':'rgb'}
+
+
 sys.path.append(os.environ['GIT_REPO'] + '/source-code/visual-rhythm')
 import visual_rhythm
 reload(visual_rhythm)
@@ -42,6 +52,26 @@ def read_weizmann_info (list_actions = 'all'):
         for file_name in os.listdir(PATH_WEIZMANN + action):
             if file_name[-3:] == 'avi': weizmann_info[(action, file_name.split('_')[0]) ] = file_name[:-4]
     return weizmann_info
+
+def search_in_kth_info (m_kth_info, (ith_person, action, ith_d)):
+    import re
+    param_ith_person = '[0-9]+' if not ith_person else str(ith_person)
+    param_action = '[a-z]+' if not action else action
+    param_ith_d = '[0-9]+' if not ith_d else str(ith_d)
+    return [(key, value) for key, value in m_kth_info.items() if re.search('_%s_%s_%s_' % (param_ith_person, param_action, param_ith_d), '_%s_' %'_'.join(map(str, key)))]
+
+
+def search_in_sheffield_info (sheffield_info, (video_mode, ith_person, background, illumination, pose, action)):
+
+    #video_mode, ith_person, background, illumination, pose, action = video_details
+    import re
+    param_video_mode = '[M,K]' if not video_mode else video_mode
+    param_ith_person = '[0-9]+' if not ith_person else str(ith_person)
+    param_background = '[0-9]' if not background else background
+    param_illumination = '[0-9]' if not illumination else illumination
+    param_pose = '[0-9]' if not pose else pose
+    param_action = '[0-9]+' if not action else action
+    return [(key, value) for key, value in sheffield_info.items() if re.search('%s_person_%s_backgroud_%s_illumination_%s_pose_%s_actionType_%s.avi' % (param_video_mode, param_ith_person, param_background, param_illumination, param_pose, param_action), value)]
 
 
 def read_kth_info (path_to_file, list_actions = 'all'):
@@ -64,6 +94,34 @@ def read_kth_info (path_to_file, list_actions = 'all'):
         m_kth_info[(ith_person, action, ith_d)] = frame_intervals
     return m_kth_info
 
+
+def read_sheffield_info (list_actions = 'all', source_mode = ['rgb', 'dep']):
+    global PATH_SHEFFIELD
+    import re
+
+    global SHEFFIELD_CLASSES
+    global SHEFFIELD_CLASSES_INV
+
+    if list_actions == 'all':
+        list_actions = map(SHEFFIELD_CLASSES_INV.get, SHEFFIELD_CLASSES[1:])
+    else:
+        list_actions = map(SHEFFIELD_CLASSES_INV.get, list_actions)
+
+    sheffield_info = {}
+    def parserInt(x):
+        try:
+            return int(x)
+        except Exception:
+            return str(x)
+
+    for mode in source_mode:
+        for ith_person in xrange(1, 7):
+            for file_name in os.listdir(PATH_SHEFFIELD + 'subject%d_%s' % (ith_person, mode)):
+                file_name = file_name[:-4]
+                param_names = re.findall('[a-z]+[a-zA-Z]+', file_name)
+                param_values = map(parserInt, re.split('[a-z, _]+[a-zA-Z, _]+', file_name))
+                sheffield_info[tuple(param_values)] = file_name + '.avi'
+    return sheffield_info
 #according to an analysis, the min-max frame-interval is 68 among all the considered actions
 
 #test using all the sequence
@@ -294,6 +352,8 @@ def filter_patterns(x):
     return change
 
 def get_sum_vertical(x):
+    if type(x).__name__ == 'tuple':
+        x = x[0]
     x = np.uint8(x)
     return np.sum([filter_patterns(x & ((1 << i) | (1 << (i + 1)))) for i in xrange(5, 8)])
 
@@ -370,7 +430,241 @@ def get_visualrhythm_sobel_kth(kth_info, type_visualrhythm = 'horizontal', param
                 cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), patt)
                 ith_p += 1
 
+def check_patterns_sheffield(sheffield_info, params_filter_sheffield, n_patterns = 5):
+    import os
+    global PATH_SHEFFIELD_PATTERNS
 
+    for video_details, file_name in search_in_sheffield_info(sheffield_info, params_filter_sheffield):
+        video_mode, ith_person, background, illumination, pose, action = video_details
+        for ith_p in xrange(1, n_patterns + 1):
+            if not os.path.isfile('%s%s/%s_p%d.png' % (PATH_SHEFFIELD_PATTERNS, action, file_name[:-4], ith_p)):
+                print file_name[:-4]
+                break
+
+
+#weizmann.get_visualrhythm_sobel_sheffield(sheffield_info, ('M', 1,1,1,1,1), type_visualrhythm = 'horizontal', params_vr = [5], frame_size = (240, 320), frame_range=(-1, -1),  n_frames = 10, n_patterns = 5, debug = False):
+def get_visualrhythm_sobel_sheffield(sheffield_info, params_filter_sheffield, type_visualrhythm = 'horizontal', params_vr = None, frame_size = (240, 320), frame_range=None,  n_frames = 10, n_patterns = 5, debug = False):
+    import skimage.feature
+    import skimage.morphology
+    import skimage.filters
+    from skimage import measure
+    from scipy import ndimage
+
+    global PATH_SHEFFIELD
+    global PATH_SHEFFIELD_VR
+    global PATH_SHEFFIELD_PATTERNS
+    global SHEFFIELD_VIDEO_MODE
+
+    start_frame, end_frame = frame_range
+    process_whole_video = end_frame == -1
+    for video_details, file_name in search_in_sheffield_info(sheffield_info, params_filter_sheffield):
+        video_mode, ith_person, background, illumination, pose, action = video_details
+
+        cap = cv2.VideoCapture('%s/subject%d_%s/%s' % (PATH_SHEFFIELD, ith_person, SHEFFIELD_VIDEO_MODE[video_mode], file_name))
+        capK = cv2.VideoCapture('%s/subject%d_%s/%s' % (PATH_SHEFFIELD, ith_person, SHEFFIELD_VIDEO_MODE['K'], file_name.replace('M', 'K')))
+        print file_name
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        ith_frame = 0
+        img_vr = []
+        img_vr_bw = []
+        if process_whole_video: end_frame = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+        for counter in xrange(start_frame, end_frame + 1):
+            if ith_frame > n_frames:break
+            ith_frame +=1
+            _, frame = cap.read()
+            _, frameK = capK.read()
+            if not _: break
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            frameK = 255 * (cv2.cvtColor(frameK, cv2.COLOR_RGB2GRAY) < 240)
+            #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)[..., 2]
+            frame = np.bitwise_and(frameK, frame)
+            img_vr.append(visual_rhythm.extract_from_frame(frame, type_visualrhythm, frame_size, params_vr))
+            img_vr_bw.append(visual_rhythm.extract_from_frame(frameK, type_visualrhythm, frame_size, params_vr))
+        if len(img_vr) < 10: break
+        img_vr = np.array(img_vr)
+        img_vr_bw = np.array(img_vr_bw)
+
+        #cv2.imwrite('%s%s/_%s.png' % (PATH_SHEFFIELD_VR, action, file_name[:-4]), img_vr)
+        img_vr_sobel = skimage.filters.sobel(img_vr)
+        img_vr_sobel_norm = cv2.normalize(img_vr_sobel, None, 0, 255, cv2.NORM_MINMAX)
+
+        if debug:
+            cv2.imwrite('/tmp/%s_vr.png' % file_name[:-4], img_vr)
+            cv2.imwrite('/tmp/%s_vr_bw.png' % file_name[:-4], img_vr_bw)
+            cv2.imwrite('/tmp/%s_sobel.png' % file_name[:-4], img_vr_sobel_norm)
+
+        ith_p = 1
+        n_win = 9
+        thr_coef = 0.01
+        thr_conn = 1.5
+        mask = np.ones([n_win, n_win]) / (1. * n_win * n_win)
+        bag_patterns = []
+        for ic in xrange(0, img_vr_sobel.shape[1] - frame_size[1], frame_size[1]):
+            patt = img_vr_sobel[:, ic:ic+frame_size[1]]
+            patt = patt[:, 20:frame_size[1]-20]
+            patt_bw = img_vr_bw[:, ic+20:ic+frame_size[1]-20]
+
+            patt_bw = cv2.medianBlur(patt_bw, 3)
+            for cmin in xrange(0, patt_bw.shape[1]):
+                if patt_bw[:, cmin].max() > 0: break
+            for cmax in xrange(patt_bw.shape[1]-1, 0, -1):
+                if patt_bw[:, cmax].max() > 0: break
+            if (cmax - cmin + 1) < 10: continue
+            patt_bw = patt_bw[:, cmin: cmax+1]
+            patt = patt[:, cmin:cmax+1]
+
+            """
+            _mean = ndimage.filters.convolve(patt, mask)
+            _sd = (ndimage.filters.convolve(patt * patt, mask) - _mean * _mean)
+            _coef = _mean / (1 + _sd)
+
+            if debug:
+                img_debug = np.vstack((
+                    cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX),
+                    cv2.normalize(_coef, None, 0, 255, cv2.NORM_MINMAX),
+                    cv2.threshold(cv2.normalize(_coef, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+                ))
+
+            if _coef.max() < thr_coef: continue
+            #cv2.imwrite('/tmp/patt_she%d.png'%ith_p, cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX))
+            original = np.copy(patt)
+            patt = _coef
+
+            #print 'wrote'
+            #return True
+            patt = cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            _, patt = cv2.threshold(patt, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+            for cmin in xrange(0, patt.shape[1]):
+                if patt[:, cmin].max() > 0: break
+            for cmax in xrange(patt.shape[1]-1, 0, -1):
+                if patt[:, cmax].max() > 0: break
+            if (cmax - cmin + 1) < 10: continue
+            #patt = patt[:, cmin: cmax+1]
+            conn = measure.label(patt)
+            n_con = conn.max()
+            ans = [skimage.morphology.convex_hull_image(conn == i).sum()/1.0/(conn == i).sum() for i in range(n_con+1)]
+            idx_valid_conn = [i for i,j in enumerate(ans) if j > thr_conn and patt[conn == i].max() > 0]
+            valid_conn = np.zeros(patt.shape, np.bool)
+            for idx in idx_valid_conn:
+                valid_conn = np.bitwise_or(valid_conn, conn == idx)
+            patt = np.bitwise_and(patt, valid_conn)
+
+            if debug:
+                img_debug = np.vstack((img_debug, patt * 255))
+                cv2.imwrite('/tmp/%s_p%d_coef=%f.png' % (file_name[:-4], ith_p, _coef.max()), img_debug)
+                #cv2.imwrite('/tmp/%s_p%d_ncon_%d.png' % (file_name[:-4], ith_p, n_con), patt)
+
+            #if (cmax - cmin + 1) > 80 and n_con > 2: continue
+            patt = cv2.normalize(original[:, cmin:cmax+1], None, 0, 255, cv2.NORM_MINMAX)
+
+            """
+            patt = cv2.normalize(patt, None, 0, 255, cv2.NORM_MINMAX)
+            patt = cv2.resize(patt, (100, 100), cv2.INTER_CUBIC)
+
+            patt_bw = cv2.normalize(patt_bw, None, 0, 255, cv2.NORM_MINMAX)
+            patt_bw = cv2.resize(patt_bw, (100, 100), cv2.INTER_CUBIC)
+            if debug:
+                cv2.imwrite('/tmp/%s_p%d.png' % (file_name[:-4], ith_p), patt)
+            #patt = cv2.adaptiveThreshold(patt, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
+            #last#cv2.imwrite('%s%s/%s_p%d.png' % (PATH_SHEFFIELD_PATTERNS, action, file_name[:-4], ith_p), patt)
+            #if debug:
+            #    cv2.imwrite('/tmp/%s_p%d.png' % (file_name[:-4], ith_p), patt)
+
+            bag_patterns.append((patt_bw, patt))
+            #cv2.imwrite('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), _coef)
+            ith_p += 1
+            #if ith_p == 4: break
+
+        bag_patterns.sort(key = get_sum_vertical, reverse = True)
+        ith_p = 6
+        for patt_bw, patt in bag_patterns[5:n_patterns]:
+            cv2.imwrite('%s%s/%s_p%d.png' % (PATH_SHEFFIELD_PATTERNS, action, file_name[:-4], ith_p), patt)
+            ith_p += 1
+        #return True
+
+def extract_nHog_features(params_hog, *params_pattern):
+    from skimage import feature
+    pattern = cv2.imread('%s%d/M_person_%d_backgroud_%d_illumination_%d_pose_%d_actionType_%d_p%d.png' % (params_pattern), False)
+    pattern_hog = feature.hog(pattern, **params_hog).flatten()
+    return pattern_hog
+
+def get_features_sheffield_per_person(params_hog, n_patterns_per_video, ith_action):
+    from skimage import feature
+    global PATH_SHEFFIELD_PATTERNS
+    data = []
+    for ith_background in xrange(1, 4):
+        for ith_illumination in xrange(1, 3):
+            for ith_pose in xrange(1, 4):
+                for ith_person in xrange(1, 7):
+                    patterns_hog = Parallel(n_jobs=1)(delayed(extract_nHog_features)(params_hog, PATH_SHEFFIELD_PATTERNS, ith_action, ith_person, ith_background, ith_illumination, ith_pose, ith_action, ith_p) for ith_p in xrange(1, n_patterns_per_video + 1))
+                    data.append(np.array(patterns_hog))
+
+    return data
+
+
+def get_features_sheffield(params_hog, n_patterns_per_video):
+    data = Parallel(n_jobs=-1)(delayed(get_features_sheffield_per_person)(params_hog, n_patterns_per_video, ith_action) for ith_action in xrange(1, 11))
+    data = np.array(data)
+    return data
+    #return data.reshape(data.shape[0] * data.shape[1], data.shape[2], data.shape[3])
+
+def classify_sheffield_simple_fold(idx_train, idx_test, data, idx, params_svm, n_patterns):
+    train = [data[ith_class, idx[idx_train], ...] for ith_class in xrange(10)]
+    train = np.array(train)
+    train = train.reshape(train.size / data.shape[-1], data.shape[-1])
+    label_train = np.repeat(range(1, 11), n_patterns * 2 * len(idx) / 3)
+
+    test = [data[ith_class, idx[idx_test], ...] for ith_class in xrange(10)]
+    test = np.array(test)
+    test = test.reshape(test.size / data.shape[-1], data.shape[-1])
+    label_test = np.repeat(range(1, 11), len(idx) / 3)
+
+    clf = svm.SVC(**params_svm).fit(train, label_train)
+    #clf = svm.SVC(kernel='poly', degree=1).fit(train, label_train)
+    #clf = neighbors.KNeighborsClassifier(n_neighbors = 1).fit(train, label_train)
+
+    pred = clf.predict(test)
+    pred = pred.reshape(pred.size/n_patterns, n_patterns)
+
+    output = []
+    for ans in pred:
+       output.append(stats.mode(ans)[0])
+
+    accuracy = metrics.accuracy_score(label_test, output)
+    output = np.array(output)
+    label_test = np.array(label_test)
+    return (accuracy, output, label_test)
+
+
+from sklearn import cross_validation
+from sklearn import svm
+from scipy import stats
+from sklearn import neighbors
+from sklearn import cross_validation
+from sklearn import metrics
+from skimage import feature
+
+
+#classify_sheffield(params_hog = {'orientations':9, 'pixels_per_cell':(8,8),'cells_per_block':(2,2)}, params_svm = {'kernel':'rbf', 'C':100}, n_patterns = 5)
+def classify_sheffield(params_hog, params_svm, n_patterns):
+    data = get_features_sheffield(params_hog, n_patterns)
+
+
+    idx = np.arange(data.shape[1])
+    np.random.shuffle(idx)
+    kf = cross_validation.KFold(data.shape[1], n_folds=3)
+    labels = None
+    answers = None
+    acc_score = []
+    tmp_ans = Parallel(n_jobs=-1)(delayed(classify_sheffield_simple_fold)(idx_train, idx_test, data, idx, params_svm, n_patterns) for idx_train, idx_test in kf)
+
+    acc_score = [tmp_ans[i][0] for i in range(3)]
+    answers = np.array([tmp_ans[i][1].flatten() for i in range(3)]).flatten()
+    labels = np.array([tmp_ans[i][2].flatten() for i in range(3)]).flatten()
+    print acc_score
+    print metrics.classification_report(answers, labels)
+    print np.mean(acc_score)
 
 ##########################
 def extract_patterns_smart(action = 'boxing', nFrames = 50, frame_size = None, patt_size = (30, 50), n_patterns = 3, show = False, save_patterns = False, thr_std = 15):
