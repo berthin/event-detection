@@ -20,12 +20,14 @@ WEIZMANN_NUMBER_SAMPLES= 9
 
 # for d in boxing handclapping handwaving walking; do mkdir $d; done
 PATH_KTH = '/home/berthin/Documents/kth/'
+PATH_KTH_OPTICALFLOW = '/home/berthin/Documents/kth-optical_flow/'
+PATH_KTH_OPTICALFLOW_PATTERNS = '/home/berthin/Documents/kth-optical_flow-patterns/'
 PATH_KTH_VR = '/home/berthin/Documents/kth-visual_rhythm-sobel/'
 PATH_KTH_PATTERNS = \
-    '/home/berthin/Documents/kth-visual_rhythm-patterns/'
-KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'walking']
+    '/home/berthin/Documents/kth-visual_rhythm-patterns-new/'
+KTH_CLASSES = ['boxing', 'handclapping', 'handwaving', 'walking', 'running', 'jogging']
 KTH_CLASSES_INV = {KTH_CLASSES[idx]:idx for idx in xrange(len(KTH_CLASSES))}
-KTH_NUMBER_CLASSES = 4
+KTH_NUMBER_CLASSES = 6
 
 PATH_SHEFFIELD = '/home/berthin/Documents/SheffieldKinectGesture/'
 PATH_SHEFFIELD_VR = '/home/berthin/Documents/sheffield-visual_rhythm-sobel/'
@@ -73,11 +75,11 @@ def search_in_sheffield_info (sheffield_info, (video_mode, ith_person, backgroun
     param_action = '[0-9]+' if not action else action
     return [(key, value) for key, value in sheffield_info.items() if re.search('%s_person_%s_backgroud_%s_illumination_%s_pose_%s_actionType_%s.avi' % (param_video_mode, param_ith_person, param_background, param_illumination, param_pose, param_action), value)]
 
-
 def read_kth_info (path_to_file, list_actions = 'all'):
     import re
     if list_actions == 'all':
-        list_actions = ['boxing', 'handclapping', 'handwaving', 'walking']
+        global KTH_CLASSES
+        list_actions = KTH_CLASSES
     start_line = 21
     inFile = open(path_to_file)
     for i in xrange(start_line): inFile.readline()
@@ -351,13 +353,31 @@ def filter_patterns(x):
             last = val
     return change
 
-def get_sum_vertical(x):
+def get_sum_vertical(patt):
+    x = patt.getPattern()
     if type(x).__name__ == 'tuple':
         x = x[0]
     x = np.uint8(x)
     return np.sum([filter_patterns(x & ((1 << i) | (1 << (i + 1)))) for i in xrange(5, 8)])
 
-def get_visualrhythm_sobel_kth(kth_info, type_visualrhythm = 'horizontal', params_vr = None, frame_size = (120, 160), frame_range=None,  n_frames = 10, n_patterns = 5):
+class Pattern:
+    # Init function params must follow: posR = (initR, lenR), posC = (initC, lenC), posT = (initT, lenT)
+    def __init__(self, img, posR, posC, posT):
+        self.img = img
+        self.posR = posR
+        self.posC = posC
+        self.posT = posT
+
+    def getPattern(self):
+        return self.img
+    def getPosR(self):
+        return self.posR
+    def getPosC(self):
+        return self.posC
+    def getPosT(self):
+        return self.posT
+
+def get_visualrhythm_sobel_kth(kth_info, params_filter_kth, type_visualrhythm = 'horizontal', params_vr = None, frame_size = (120, 160), n_patterns = 5):
     import skimage.feature
     import skimage.morphology
     import skimage.filters
@@ -368,12 +388,15 @@ def get_visualrhythm_sobel_kth(kth_info, type_visualrhythm = 'horizontal', param
     global PATH_KTH_VR
     global PATH_KTH_PATTERNS
 
-    for key, value in kth_info.items():
+    thr_coef = 0.07
+    #for key, value in kth_info.items():
+    for key, value in search_in_kth_info(kth_info, params_filter_kth):
         ith_person, action, ith_d = key
         if len(value) == 0: continue
         cap = cv2.VideoCapture('%s%s/person%02d_%s_d%d_uncomp.avi' % (PATH_KTH, action, ith_person, action, ith_d))
         ith_frame = 0
         ith_p = 1
+        bag_patterns = []
         for start_frame, end_frame in value:
             img_vr = []
             cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
@@ -389,19 +412,23 @@ def get_visualrhythm_sobel_kth(kth_info, type_visualrhythm = 'horizontal', param
             img_vr_sobel = skimage.filters.sobel(img_vr)
             img_vr_sobel_norm = cv2.normalize(img_vr_sobel, None, 0, 255, cv2.NORM_MINMAX)
 
-            cv2.imwrite('%s%s/person%02d_%s_d%d_uncomp.png' % (PATH_KTH_VR, action, ith_person, action, ith_d), img_vr_sobel_norm)
+            #cv2.imwrite('%s%s/person%02d_%s_d%d_uncomp.png' % (PATH_KTH_VR, action, ith_person, action, ith_d), img_vr_sobel_norm)
 
             n_win = 9
             mask = np.ones([n_win, n_win]) / (1. * n_win * n_win)
-            bag_patterns = []
+            #works only for horizontal & vertical, by the moment only for horizontal
+            initR, lenR = -params_vr[0], params_vr[0]
+            initC, lenC = 0, frame_size[1]
+            initT, lenT = start_frame, end_frame - start_frame + 1
             for ic in xrange(0, img_vr_sobel.shape[1] - frame_size[1], frame_size[1]):
+                initR += params_vr[0]
                 patt = img_vr_sobel[:, ic:ic+frame_size[1]]
                 patt = patt[:, 20:frame_size[1]-20]
                 _mean = ndimage.filters.convolve(patt, mask)
                 _sd = (ndimage.filters.convolve(patt * patt, mask) - _mean * _mean)
                 _coef = _mean / (1 + _sd)
 
-                if _coef.max() < 0.1: continue
+                if _coef.max() < thr_coef: continue
                 original = np.copy(patt)
                 patt = _coef
                 #cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), cv2.normalize(_coef, None, 0, 255, cv2.NORM_MINMAX))
@@ -414,21 +441,22 @@ def get_visualrhythm_sobel_kth(kth_info, type_visualrhythm = 'horizontal', param
                     if patt[:, cmax].max() > 0: break
                 n_con = (measure.label(patt)).max()
                 if (cmax - cmin + 1) > 80 and n_con > 2: continue
-                patt = patt[:, cmin: cmax+1]
+                initC, lenC = cmin + 20, cmax - cmin + 1 #fixing bug
+                #patt = patt[:, cmin: cmax+1]
                 patt = cv2.normalize(original[:, cmin:cmax+1], None, 0, 255, cv2.NORM_MINMAX)
                 patt = cv2.resize(patt, (100, 100), cv2.INTER_CUBIC)
                 #patt = cv2.adaptiveThreshold(patt, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
 
-                bag_patterns.append(patt);
+                bag_patterns.append(Pattern(patt, (initR, lenR), (initC, lenC), (initT, lenT)));
                 #cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), patt)
                 #cv2.imwrite('%s%s/%s_p%d.png' % (PATH_WEIZMANN_PATTERNS, action, person, ith_p), _coef)
-                ith_p += 1
-                #if ith_p == 4: break
-            bag_patterns.sort(key = get_sum_vertical, reverse = True)
-            ith_p = 1
-            for patt in bag_patterns[:n_patterns]:
-                cv2.imwrite('%s%s/person%02d_%s_d%d_p%d.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p), patt)
-                ith_p += 1
+        if len(bag_patterns) < 5:
+            print action, ith_person, ith_d, len(bag_patterns)
+        bag_patterns.sort(key = get_sum_vertical, reverse = True)
+        ith_p = 1
+        for patt in bag_patterns[:n_patterns]:
+            cv2.imwrite('%s%s/person%02d_%s_d%d_p%d_(%d_%d)(%d_%d)(%d_%d).png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d, ith_p, patt.getPosR()[0], patt.getPosR()[1], patt.getPosC()[0], patt.getPosC()[1], patt.getPosT()[0], patt.getPosT()[1]), patt.getPattern())
+            ith_p += 1
 
 def check_patterns_sheffield(sheffield_info, params_filter_sheffield, n_patterns = 5):
     import os
@@ -821,24 +849,58 @@ def extract_patterns_smart_var(action = 'boxing', nFrames = 50, frame_size = Non
 
 from skimage.feature import hog
 def hog_per_action(action = 'boxing', actors_training = [], params_hog = None, n_patterns_per_video = 0):
+    import glob
     global PATH_KTH_PATTERNS
+    global KTH_CLASSES_INV
+
     data = []
+    label = []
     for ith_actor in actors_training:
         for ith_d in xrange(1, 5):
             for ith_p in xrange(1, 1 + n_patterns_per_video):
-                pattern = cv2.imread('%s%s/person%02d_%s_d%d_p%d.bmp' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p), False)
-                if pattern is None: continue
-                pattern = (pattern > 0) * 255
+                file_path = glob.glob('%s%s/person%02d_%s_d%d_p%d*.png' % (PATH_KTH_PATTERNS, action, ith_actor, action, ith_d, ith_p))
+                if not file_path: continue
+                pattern = cv2.imread(file_path[0], False)
+                #pattern = (pattern > 0) * 255
                 data.append(hog(pattern, **params_hog))
-    return np.array(data)
+                label.append(KTH_CLASSES_INV[action])
+    return (np.array(data), np.array(label))
 
+def hof_per_action(action = 'boxing', actors_training = [], params_hof = None, n_patterns_per_video = 0):
+    import _hog
+    reload(_hog)
+    import glob
+    global PATH_KTH_OPTICALFLOW_PATTERNS
+    global KTH_CLASSES_INV
+
+    data = []
+    label = []
+    for ith_actor in actors_training:
+        for ith_d in xrange(1, 5):
+            for ith_p in xrange(1, 1 + n_patterns_per_video):
+                file_path = glob.glob('%s%s/person%02d_%s_d%d_p%d*.npz' % (PATH_KTH_OPTICALFLOW_PATTERNS, action, ith_actor, action, ith_d, ith_p))
+                if not file_path: continue
+                mag, ang = np.load(file_path[0])['arr_0']
+                data.append(_hog.hof2(mag, ang, **params_hof))
+                label.append(KTH_CLASSES_INV[action])
+    return (np.array(data), np.array(label))
 #classify_visualrhythm_canny_patterns({'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}, 5)
 
-def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
-    from skimage.feature import hog
+def get_features_kth(descriptor, params_hogf, n_patterns_per_video, list_actions = None):
     from sklearn.externals.joblib import Parallel, delayed
 
+    if descriptor == 'hog':
+        feature_extractor = hog_per_action
+    elif descriptor == 'hof':
+        feature_extractor = hof_per_action
+
     global KTH_CLASSES
+    global KTH_NUMBER_CLASSES
+    if list_actions == None:
+        list_actions = KTH_CLASSES
+        n_actions = KTH_NUMBER_CLASSES
+    else:
+        n_actions = len(list_actions)
 
     #params_hog = {'orientations':8, 'pixels_per_cell':(8, 8), 'cells_per_block':(2,2), 'visualise':False}
     #n_patterns_per_video = 5
@@ -847,29 +909,146 @@ def classify_visualrhythm_canny_patterns(params_hog, n_patterns_per_video):
     actors_validation = [19, 20, 21, 23, 24, 25, 1, 4]
     actors_testing = [22, 2, 3, 5, 6, 7, 8, 9, 10]
 
-    data_training_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_training, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
-    data_training = np.empty([0, data_training_list[0].shape[1]])
-    label_training = np.empty([0])
-    for ith_action, datum in zip(xrange(4), data_training_list):
-        data_training = np.vstack((data_training, datum))
-        label_training = np.hstack((label_training, np.repeat(ith_action, datum.shape[0])))
+    datainfo = (Parallel(n_jobs=-1) (delayed(feature_extractor) (action, actors_training, params_hogf, n_patterns_per_video) for action in list_actions))
+    data_training_list = np.array([datainfo[i][0] for i in range(n_actions)])
+    if len(data_training_list.shape) == 1:
+        data_training_list, label_training_list = np.hsplit(np.array(datainfo), 2)
+        data_training_list = data_training_list.reshape(-1)
+        data_training = np.empty([0, data_training_list[0].shape[1]])
+        label_training_list = label_training_list.reshape(-1)
+        label_training = np.empty([0])
+        for ith_action, datum in zip(xrange(n_actions), data_training_list):
+            data_training = np.vstack((data_training, datum))
+            label_training = np.hstack((label_training, label_training_list[ith_action]))
+    else:
+        label_training = np.array([datainfo[i][1] for i in range(n_actions)]).flatten()
+        data_training = data_training_list.reshape(-1, data_training_list.shape[-1])
+        data_training_list = data_training_list.reshape(-1)
 
-    data_validation_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_validation, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
-    data_validation = np.empty([0, data_validation_list[0].shape[1]])
-    label_validation = np.empty([0])
-    for ith_action, datum in zip(xrange(4), data_validation_list):
-        data_validation = np.vstack((data_validation, datum))
-        label_validation = np.hstack((label_validation, np.repeat(ith_action, datum.shape[0])))
+    datainfo = (Parallel(n_jobs=-1) (delayed(feature_extractor) (action, actors_validation, params_hogf, n_patterns_per_video) for action in list_actions))
+    data_validation_list = np.array([datainfo[i][0] for i in range(n_actions)])
+    label_validation = np.array([datainfo[i][1] for i in range(n_actions)]).flatten()
+    data_validation = data_validation_list.reshape(-1, data_validation_list.shape[-1])
 
-    data_testing_list = Parallel(n_jobs=-1) (delayed(hog_per_action) (action, actors_testing, params_hog, n_patterns_per_video) for action in KTH_CLASSES)
-    data_testing = np.empty([0, data_testing_list[0].shape[1]])
-    label_testing = np.empty([0])
-    for ith_action, datum in zip(xrange(4), data_testing_list):
-        data_testing = np.vstack((data_testing, datum))
-        label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
+    datainfo = (Parallel(n_jobs=-1) (delayed(feature_extractor) (action, actors_testing, params_hogf, n_patterns_per_video) for action in list_actions))
+    data_testing_list = np.array([datainfo[i][0] for i in range(n_actions)])
+    label_testing = np.array([datainfo[i][1] for i in range(n_actions)]).flatten()
+    data_testing = data_testing_list.reshape(-1, data_testing_list.shape[-1])
+    #data_testing_list = data_testing_list.reshape(-1)
+    #data_testing = np.empty([0, data_testing_list[0].shape[1]])
+    ##label_testing = np.empty([0])
+    #label_testing = label_testing.flatten()
+    #for ith_action, datum in zip(xrange(n_actions), data_testing_list):
+    #    data_testing = np.vstack((data_testing, datum))
+    #    #label_testing = np.hstack((label_testing, np.repeat(ith_action, datum.shape[0])))
 
     return (data_training, data_validation, data_testing,
             label_training, label_validation, label_testing)
+
+"""
+weizmann.classify_sobel_kth(descriptor='hof', params_hogf=dict(orientations=9, pixels_per_cell=(8,8), cells_per_block=(2,2)), params_svm=dict(kernel='rbf', C=100), n_patterns=5, type_svm='svm', list_actions=weizmann.KTH_CLASSES)
+"""
+def classify_sobel_kth(descriptor, params_hogf, params_svm, n_patterns=5, type_svm='svm', list_actions = None, return_pred = False):
+
+    if descriptor == 'hog-hof':
+        data_training_hog, data_validation_hog, data_testing_hog, label_training_hog, label_validation_hog, label_testing_hog = get_features_kth('hog', params_hogf['params_hog'], n_patterns, list_actions)
+        data_training_hof, data_validation_hof, data_testing_hof, label_training_hof, label_validation_hof, label_testing_hof = get_features_kth('hof', params_hogf['params_hof'], n_patterns, list_actions)
+        data_training = np.hstack((data_training_hog, data_training_hof))
+        data_validation = np.hstack((data_validation_hog, data_validation_hof))
+        data_testing = np.hstack((data_testing_hog, data_testing_hof))
+        assert((label_training_hog == label_training_hof).all())
+        assert((label_validation_hog == label_validation_hof).all())
+        assert((label_testing_hog == label_testing_hof).all())
+        label_training = label_training_hog
+        label_validation = label_validation_hog
+        label_testing = label_testing_hog
+    else:
+        data_training, data_validation, data_testing, label_training, label_validation, label_testing = get_features_kth(descriptor, params_hogf, n_patterns, list_actions)
+
+    #run_svm_sobel(data_training, data_validation, data_testing, label_training, label_validation, label_testing, type_svm)
+    clf = svm.SVC(**params_svm).fit(np.vstack((data_training, data_validation)), np.hstack((label_training, label_validation)))
+    pred = clf.predict(data_testing)
+    pred = pred.reshape(pred.size/n_patterns, n_patterns)
+
+    output = []
+    for ans in pred:
+       output.append(stats.mode(ans)[0])
+
+    label_testing = label_testing.reshape(-1, n_patterns)[:, 0]
+    accuracy = metrics.accuracy_score(label_testing, output)
+    output = np.array(output)
+    label_test = np.array(label_testing)
+    print metrics.classification_report(output, label_testing)
+    print accuracy
+    if return_pred:
+        return (output, label_testing, pred)
+    return (output, label_testing)
+
+sys.path.append(os.environ['GIT_REPO'] + '/source-code/optical-flow')
+import opticalFlowAlgorithms
+reload(opticalFlowAlgorithms)
+def get_opticalFlow_kth(kth_info, params_filter_kth = (None, None, None), grid_step=12):
+    import os
+    global PATH_KTH_OPTICALFLOW
+    global PATH_KTH
+    for key, value in search_in_kth_info(kth_info, params_filter_kth):
+        ith_person, action, ith_d = key
+        if len(value) == 0: continue
+        file_path = '%s%s/person%02d_%s_d%d.npz' % (PATH_KTH_OPTICALFLOW, action, ith_person, action, ith_d)
+        print file_path
+        if os.path.exists(file_path): continue
+        cap = cv2.VideoCapture('%s%s/person%02d_%s_d%d_uncomp.avi' % (PATH_KTH, action, ith_person, action, ith_d))
+        mag, ang = opticalFlowAlgorithms.get_dense_opticalFlow(cap, dict(grid_step = grid_step))
+        np.savez_compressed(file_path, mag, ang)
+
+def get_patterns_opticalFlow(kth_info, params_filter_kth, save_patterns_as_img=False):
+    import glob
+    import re
+    global PATH_KTH_PATTERNS
+    global PATH_KTH_OPTICALFLOW
+    global PATH_KTH_OPTICALFLOW_PATTERNS
+    for key, value in search_in_kth_info(kth_info, params_filter_kth):
+        ith_person, action, ith_d = key
+        if len(value) == 0: continue
+        filename_pattern = glob.glob('%s%s/person%02d_%s_d%d*.png' % (PATH_KTH_PATTERNS, action, ith_person, action, ith_d))
+        if not filename_pattern: continue
+        pattern_opticalFlow = np.load('%s%s/person%02d_%s_d%d.npz' % (PATH_KTH_OPTICALFLOW, action, ith_person, action, ith_d))
+        mag = pattern_opticalFlow['arr_0']
+        ang = pattern_opticalFlow['arr_1']
+        for path_pattern in filename_pattern:
+            print path_pattern
+            coord = re.split('/[\w]*', path_pattern[:-4])[-1]
+            print coord
+            posR, lenR, posC, lenC, posT, lenT = map(int, [x for x in re.split('_|\(|\)', coord) if x])
+            pattern_mag = cv2.resize(mag[posT:posT+lenT, posR, posC:posC+lenC], (100, 100))
+            pattern_ang = cv2.resize(ang[posT:posT+lenT, posR, posC:posC+lenC], (100, 100))
+            pattern_sobel = cv2.imread(path_pattern, False) / 255.
+
+            np.savez_compressed(path_pattern.replace(PATH_KTH_PATTERNS, PATH_KTH_OPTICALFLOW_PATTERNS)[:-4] + '.npz', [pattern_sobel * pattern_mag, pattern_sobel * pattern_ang])
+
+            if save_patterns_as_img:
+                hsv = np.empty([pattern_sobel.shape[0], pattern_sobel.shape[1], 3], np.uint8)
+                hsv[..., 1] = 255
+                hsv[..., 0] = pattern_sobel / 255. * pattern_ang * 180 / np.pi / 2
+                hsv[..., 2] = cv2.normalize(pattern_sobel / 255. * pattern_mag, None, 0, 255, cv2.NORM_MINMAX)
+                bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+                cv2.imwrite(path_pattern.replace(PATH_KTH_PATTERNS, PATH_KTH_OPTICALFLOW_PATTERNS), bgr)
+
+
+def plot_confusion_matrix((y_test, y_pred), title='Confusion matrix', cmap=plt.cm.Blues):
+    from sklearn import metrics
+    cm = metrics.confusion_matrix(y_test, y_pred)
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    #tick_marks = np.arange(len(iris.target_names))
+    #plt.xticks(tick_marks, iris.target_names, rotation=45)
+    #plt.yticks(tick_marks, iris.target_names)
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.show()
 
 import _hog
 #use odd pixels_per_cell values
@@ -1012,7 +1191,7 @@ def run_gridSearch(classifier, args, data_training, label_training, data_validat
     from sklearn import metrics
     return metrics.accuracy_score(classifier(**args).fit(data_training, label_training).predict(data_validation), label_validation)
 
-def run_svm_canny_patterns (data_training, data_validation, data_testing,
+def run_svm_sobel (data_training, data_validation, data_testing,
         label_training, label_validation, label_testing, type_svm = 'svm'):
     from sklearn import svm, grid_search
     from sklearn import neighbors
@@ -1066,6 +1245,7 @@ def run_svm_canny_patterns (data_training, data_validation, data_testing,
 
     pred = clf.predict(data_testing)
 
+    print best_params
     print metrics.classification_report (pred, label_testing)
 
     print 'accuracy: ', metrics.accuracy_score(pred, label_testing)
