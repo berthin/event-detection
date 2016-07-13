@@ -350,6 +350,195 @@ def hog_variant_superposition (image, orientations=9, pixels_per_cell=(8, 8), ce
     return normalised_blocks
     #return normalised_blocks.ravel()
 
+def hof(magnitude, orientation, orientations=9, pixels_per_cell=(8, 8),
+        cells_per_block=(3, 3), visualise = False, normalise=False):
+
+    if normalise:
+        magnitude = sqrt(magnitude)
+
+    orientation = orientation * (180 / pi) % 180
+    #magnitude = sqrt(gx ** 2 + gy ** 2)
+    #orientation = arctan2(gy, gx) * (180 / pi) % 180
+
+    sy, sx = magnitude.shape
+    cx, cy = pixels_per_cell
+    bx, by = cells_per_block
+
+    n_cellsx = int(np.floor(sx // cx))  # number of cells in x
+    n_cellsy = int(np.floor(sy // cy))  # number of cells in y
+
+    # compute orientations integral images
+    orientation_histogram = np.zeros((n_cellsy, n_cellsx, orientations))
+    subsample = np.index_exp[cy // 2:cy * n_cellsy:cy,
+                             cx // 2:cx * n_cellsx:cx]
+    np.seterr(invalid='ignore')
+    for i in range(orientations):
+        # create new integral image for this orientation
+        # isolate orientations in this range
+
+        temp_ori = np.where(orientation < 180.0 / orientations * (i + 1),
+                            orientation, -1)
+        temp_ori = np.where(orientation >= 180.0 / orientations * i,
+                            temp_ori, -1)
+        # select magnitudes for those orientations
+        cond2 = temp_ori > -1
+        temp_mag = np.where(cond2, magnitude, 0)
+
+        temp_filt = uniform_filter(temp_mag, size=(cy, cx))
+        orientation_histogram[:, :, i] = temp_filt[subsample]
+
+    # now for each cell, compute the histogram
+    hof_image = None
+
+    if visualise:
+        radius = min(cx, cy) // 2 - 1
+        hof_image = np.zeros((sy, sx), dtype=float)
+        for x in range(n_cellsx):
+            for y in range(n_cellsy):
+                for o in range(orientations):
+                    centre = tuple([y * cy + cy // 2, x * cx + cx // 2])
+                    dx = radius * cos(float(o) / orientations * np.pi)
+                    dy = radius * sin(float(o) / orientations * np.pi)
+                    rr, cc = draw.line(int(centre[0] - dx),
+                                       int(centre[1] + dy),
+                                       int(centre[0] + dx),
+                                       int(centre[1] - dy))
+                    hof_image[rr, cc] += orientation_histogram[y, x, o]
+
+    """
+    The fourth stage computes normalisation, which takes local groups of
+    cells and contrast normalises their overall responses before passing
+    to next stage. Normalisation introduces better invariance to illumination,
+    shadowing, and edge contrast. It is performed by accumulating a measure
+    of local histogram "energy" over local groups of cells that we call
+    "blocks". The result is used to normalise each cell in the block.
+    Typically each individual cell is shared between several blocks, but
+    its normalisations are block dependent and thus different. The cell
+    thus appears several times in the final output vector with different
+    normalisations. This may seem redundant but it improves the performance.
+    We refer to the normalised block descriptors as Histogram of Oriented
+    Gradient (HOG) descriptors.
+    """
+
+    n_blocksx = (n_cellsx - bx) + 1
+    n_blocksy = (n_cellsy - by) + 1
+    normalised_blocks = np.zeros((n_blocksy, n_blocksx,
+                                  by, bx, orientations))
+
+    for x in range(n_blocksx):
+        for y in range(n_blocksy):
+            block = orientation_histogram[y:y + by, x:x + bx, :]
+            eps = 1e-5
+            normalised_blocks[y, x, :] = block / sqrt(block.sum() ** 2 + eps)
+
+    """
+    The final step collects the HOG descriptors from all blocks of a dense
+    overlapping grid of blocks covering the detection window into a combined
+    feature vector for use in the window classifier.
+    """
+
+    if visualise:
+        return normalised_blocks, hof_image
+        #return normalised_blocks.ravel(), hog_image
+    else:
+        return normalised_blocks.ravel()
+        #return normalised_blocks.ravel()
+
+def hof2(magnitude, orientation, orientations=9, pixels_per_cell=(8, 8),
+        cells_per_block=(3, 3), visualise = False, normalise=False):
+
+    if normalise:
+        magnitude = sqrt(magnitude)
+
+    orientation = orientation * (180 / pi) % 360
+    #magnitude = sqrt(gx ** 2 + gy ** 2)
+    #orientation = arctan2(gy, gx) * (180 / pi) % 180
+
+    sy, sx = magnitude.shape
+    cx, cy = pixels_per_cell
+    bx, by = cells_per_block
+
+    n_cellsx = int(np.floor(sx // cx))  # number of cells in x
+    n_cellsy = int(np.floor(sy // cy))  # number of cells in y
+
+    # compute orientations integral images
+    orientation_histogram = np.zeros((n_cellsy, n_cellsx, orientations))
+    subsample = np.index_exp[cy // 2:cy * n_cellsy:cy,
+                             cx // 2:cx * n_cellsx:cx]
+    np.seterr(invalid='ignore')
+    for i in range(orientations):
+        # create new integral image for this orientation
+        # isolate orientations in this range
+
+        temp_ori = np.where(orientation < -90 + 180.0 / orientations * i,
+                            orientation, -1)
+        temp_ori = np.where(orientation >= -90 + 180.0 / orientations * (i - 1),
+                            temp_ori, -1)
+        # select magnitudes for those orientations
+        cond2 = temp_ori > -1
+        temp_mag = np.where(cond2, magnitude, 0)
+
+        temp_filt = uniform_filter(temp_mag, size=(cy, cx))
+        orientation_histogram[:, :, i] = temp_filt[subsample]
+
+    # now for each cell, compute the histogram
+    hof_image = None
+
+    if visualise:
+        radius = min(cx, cy) // 2 - 1
+        hof_image = np.zeros((sy, sx), dtype=float)
+        for x in range(n_cellsx):
+            for y in range(n_cellsy):
+                for o in range(orientations):
+                    centre = tuple([y * cy + cy // 2, x * cx + cx // 2])
+                    dx = radius * cos(float(o) / orientations * np.pi)
+                    dy = radius * sin(float(o) / orientations * np.pi)
+                    rr, cc = draw.line(int(centre[0] - dx),
+                                       int(centre[1] + dy),
+                                       int(centre[0] + dx),
+                                       int(centre[1] - dy))
+                    hof_image[rr, cc] += orientation_histogram[y, x, o]
+
+    """
+    The fourth stage computes normalisation, which takes local groups of
+    cells and contrast normalises their overall responses before passing
+    to next stage. Normalisation introduces better invariance to illumination,
+    shadowing, and edge contrast. It is performed by accumulating a measure
+    of local histogram "energy" over local groups of cells that we call
+    "blocks". The result is used to normalise each cell in the block.
+    Typically each individual cell is shared between several blocks, but
+    its normalisations are block dependent and thus different. The cell
+    thus appears several times in the final output vector with different
+    normalisations. This may seem redundant but it improves the performance.
+    We refer to the normalised block descriptors as Histogram of Oriented
+    Gradient (HOG) descriptors.
+    """
+
+    n_blocksx = (n_cellsx - bx) + 1
+    n_blocksy = (n_cellsy - by) + 1
+    normalised_blocks = np.zeros((n_blocksy, n_blocksx,
+                                  by, bx, orientations))
+
+    for x in range(n_blocksx):
+        for y in range(n_blocksy):
+            block = orientation_histogram[y:y + by, x:x + bx, :]
+            eps = 1e-5
+            #normalised_blocks[y, x, :] = block / sqrt(block.sum() ** 2 + eps)
+            normalised_blocks[y, x, :] = block / (block.sum() + eps)
+
+    """
+    The final step collects the HOG descriptors from all blocks of a dense
+    overlapping grid of blocks covering the detection window into a combined
+    feature vector for use in the window classifier.
+    """
+
+    if visualise:
+        return normalised_blocks, hof_image
+        #return normalised_blocks.ravel(), hog_image
+    else:
+        return normalised_blocks.ravel()
+        #return normalised_blocks.ravel()
+
 def raw_block_superposition (image, pixels_per_cell=(8, 8), cells_per_block=(3, 3), normalise=False):
     """Extract raw pixels for a given image.
 
